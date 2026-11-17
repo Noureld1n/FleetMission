@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: backend
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5432/fleetmission}
+    username: ${SPRING_R2DBC_USERNAME:app_runtime}
+    password: ${SPRING_R2DBC_PASSWORD:}
+  flyway:
+    locations: classpath:db/migration
+    url: ${SPRING_FLYWAY_URL:jdbc:postgresql://localhost:5432/fleetmission}
+    user: ${SPRING_FLYWAY_USER:app_owner}
+    password: ${SPRING_FLYWAY_PASSWORD:}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,prometheus}
+

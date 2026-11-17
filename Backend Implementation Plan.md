@@ -18,19 +18,19 @@ This plan turns every requirement in `Backend Sheet.md` into an ordered implemen
 
 ### Work
 
-- [ ] Confirm the generated project uses Maven, Java 21 or 25, JAR packaging, the stable Spring Boot 4.x line, and `com.fleetcontrol.backend`.
-- [ ] Confirm production dependencies: WebFlux, R2DBC, PostgreSQL JDBC and R2DBC drivers, reactive Redis/Lettuce, Spring Security, OAuth2 Resource Server/JWT, Validation, Actuator, Micrometer Prometheus, Flyway starter, JDBC starter, and Flyway PostgreSQL support.
-- [ ] Confirm test dependencies: Boot test companions, Spring Boot Testcontainers support, Testcontainers JUnit Jupiter, PostgreSQL and R2DBC modules, Testcontainers core for Redis `GenericContainer`, Reactor Test, and BlockHound.
-- [ ] Verify BlockHound's JVM launch requirements for the selected JDK and configure test execution accordingly.
-- [ ] Confirm `BackEnd/src/main/resources/db/migration` as the Flyway migration location. Move/copy the existing schema draft there only after checking it against the model and migration sequence in Phase 1.
-- [ ] Create profile files: `application.yml`, `application-dev.yml`, and `application-prod.yml`.
-- [ ] Keep the existing application name `backend` and main class `BackendApplication`.
+- [x] Confirm the generated project uses Maven, Java 21 or 25, JAR packaging, the stable Spring Boot 4.x line, and `com.fleetcontrol.backend`.
+- [x] Confirm production dependencies: WebFlux, R2DBC, PostgreSQL JDBC and R2DBC drivers, reactive Redis/Lettuce, Spring Security, OAuth2 Resource Server/JWT, Validation, Actuator, Micrometer Prometheus, Flyway starter, JDBC starter, and Flyway PostgreSQL support.
+- [x] Confirm test dependencies: Boot test companions, Spring Boot Testcontainers support, Testcontainers JUnit Jupiter, PostgreSQL and R2DBC modules, Testcontainers core for Redis `GenericContainer`, Reactor Test, and BlockHound.
+- [x] Verify BlockHound's JVM launch requirements for the selected JDK and configure test execution accordingly.
+- [x] Confirm `BackEnd/src/main/resources/db/migration` as the Flyway migration location. Move/copy the existing schema draft there only after checking it against the model and migration sequence in Phase 1.
+- [x] Create profile files: `application.yml`, `application-dev.yml`, and `application-prod.yml`.
+- [x] Keep the existing application name `backend` and main class `BackendApplication`.
 
 ### Completion gate
 
-- [ ] Project builds with the selected JDK and all dependencies resolve.
+- [x] Project builds with the selected JDK and all dependencies resolve.
 - [ ] A minimal application context starts without adding MVC/JPA or blocking database access.
-- [ ] No secrets are present in committed configuration.
+- [x] No secrets are present in committed configuration.
 
 ## Phase 1: Schema review, database roles, migrations, and seed data
 
