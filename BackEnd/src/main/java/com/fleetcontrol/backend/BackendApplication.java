@@ -1,13 +1,13 @@
-package com.Controll.ScreenCon;
+package com.fleetcontrol.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ScreenConApplication {
+public class BackendApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ScreenConApplication.class, args);
+		SpringApplication.run(BackendApplication.class, args);
 	}
 
 }

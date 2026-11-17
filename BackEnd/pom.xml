@@ -8,11 +8,11 @@
 		<version>4.1.2</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.Controll</groupId>
-	<artifactId>ScreenCon</artifactId>
+	<groupId>com.fleetcontrol</groupId>
+	<artifactId>backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>BackEnd</name>
+	<description>Fleet Mission Control backend</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -69,6 +69,7 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>
@@ -149,6 +150,25 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-r2dbc</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- GenericContainer is used for Redis integration tests. -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- StepVerifier and TestPublisher for testing Reactor pipelines. -->
+		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Detect blocking calls on reactive event-loop threads in tests. -->
+		<dependency>
+			<groupId>io.projectreactor.tools</groupId>
+			<artifactId>blockhound</artifactId>
+			<version>1.0.18.RELEASE</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
