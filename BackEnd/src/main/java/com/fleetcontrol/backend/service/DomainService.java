@@ -12,6 +12,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import java.time.Clock;
 import java.time.Duration;
@@ -22,6 +24,7 @@ import java.util.function.Function;
 
 @Service
 public class DomainService {
+    private static final Logger log=LoggerFactory.getLogger(DomainService.class);
     private final DomainRepository repository;
     private final TenantTransaction transactions;
     private final ReactiveStringRedisTemplate redis;
@@ -83,9 +86,12 @@ public class DomainService {
     public Mono<AlertResponse> acknowledge(UUID id) { return transition(id,repository::acknowledge,"ALERT_NOT_FOUND","Alert was not found."); }
     public Mono<AlertResponse> resolve(UUID id) { return transition(id,repository::resolve,"ALERT_NOT_FOUND","Alert was not found."); }
     private Mono<AlertResponse> transition(UUID id,Function<UUID,Mono<AlertResponse>> action,String code,String detail) {
-        return inTransaction(()->action.apply(id).switchIfEmpty(repository.alertExists(id).flatMap(exists->exists
+        return DomainSupport.identity().flatMap(identity->inTransaction(()->action.apply(id).switchIfEmpty(repository.alertExists(id).flatMap(exists->exists
                 ? Mono.error(new ApiException(HttpStatus.CONFLICT,"INVALID_ALERT_TRANSITION","Alert is already in a state that cannot make this transition."))
-                : Mono.error(new ApiException(HttpStatus.NOT_FOUND,code,detail)))));
+                : Mono.error(new ApiException(HttpStatus.NOT_FOUND,code,detail)))))
+                .flatMap(alert->redis.convertAndSend(com.fleetcontrol.backend.repository.TelemetryLiveRepository.alertChannel(identity.tenantId()),repository.writeJson(alert))
+                        .thenReturn(alert)
+                        .onErrorResume(error->{log.error("Alert transition committed but Redis notification failed; alertId={}",alert.id(),error);return Mono.just(alert);}))) ;
     }
     public Mono<PageResponse<DashboardResponse>> dashboards(String cursor,int limit) {
         UUID c=DomainSupport.cursor(cursor); int n=DomainSupport.limit(limit);

@@ -33,6 +33,16 @@ public class DomainRepository {
                 .bind("from",from).bind("to",to).bind("limit",limit)
                 .map((r,m)->new FleetMinuteAggregate(r.get("bucket",OffsetDateTime.class),r.get("battery_avg",Double.class),r.get("battery_min",Integer.class),r.get("sample_count",Long.class))).all();
     }
+    public Flux<AlertResponse> alertChangesPage(OffsetDateTime since,OffsetDateTime until,
+                                                OffsetDateTime cursorAt,UUID cursorId,int count) {
+        String sql="SELECT id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail "+
+                "FROM public.alerts WHERE updated_at>=:since AND updated_at<=:until "+
+                "AND (:cursorAt IS NULL OR updated_at>:cursorAt OR (updated_at=:cursorAt AND id>:cursorId)) "+
+                "ORDER BY updated_at,id LIMIT :count";
+        var q=db.sql(sql).bind("since",since).bind("until",until).bind("count",count);
+        q=cursorAt==null?q.bindNull("cursorAt",OffsetDateTime.class).bindNull("cursorId",UUID.class):q.bind("cursorAt",cursorAt).bind("cursorId",cursorId);
+        return q.map((r,m)->alert(r)).all();
+    }
     public Flux<VehicleResponse> vehicles(String status, UUID district, UUID cursor, int count) {
         String sql="SELECT id,external_ref,kind,home_district_id,status,created_at,retired_at FROM public.vehicles WHERE (:status IS NULL OR status=:status) AND (:district IS NULL OR home_district_id=:district) AND (:cursor IS NULL OR id>:cursor) ORDER BY id LIMIT :count";
         var q=db.sql(sql).bind("count",count);
@@ -60,31 +70,31 @@ public class DomainRepository {
     private DistrictResponse district(io.r2dbc.spi.Row r) { return new DistrictResponse(r.get("id",UUID.class),r.get("name",String.class),readJson(r.get("boundary_json",String.class)),r.get("created_at",OffsetDateTime.class)); }
 
     public Flux<AlertResponse> alerts(String status,String severity,UUID cursor,int count) {
-        String sql="SELECT id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail FROM public.alerts WHERE (:status IS NULL OR status=:status) AND (:severity IS NULL OR severity=:severity) AND (:cursor IS NULL OR id>:cursor) ORDER BY id LIMIT :count";
+        String sql="SELECT id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail FROM public.alerts WHERE (:status IS NULL OR status=:status) AND (:severity IS NULL OR severity=:severity) AND (:cursor IS NULL OR id>:cursor) ORDER BY id LIMIT :count";
         var q=db.sql(sql).bind("count",count); q=status==null?q.bindNull("status",String.class):q.bind("status",status); q=severity==null?q.bindNull("severity",String.class):q.bind("severity",severity); q=cursor==null?q.bindNull("cursor",UUID.class):q.bind("cursor",cursor);
         return q.map((r,m)->alert(r)).all();
     }
     public Mono<AlertResponse> acknowledge(UUID id) {
-        return db.sql("UPDATE public.alerts SET status='acknowledged',acknowledged_at=COALESCE(acknowledged_at,now()) WHERE id=:id AND status='open' RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+        return db.sql("UPDATE public.alerts SET status='acknowledged',acknowledged_at=COALESCE(acknowledged_at,now()),updated_at=now() WHERE id=:id AND status='open' RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
                 .bind("id",id).map((r,m)->alert(r)).one();
     }
     public Mono<AlertResponse> resolve(UUID id) {
-        return db.sql("UPDATE public.alerts SET status='resolved',resolved_at=now() WHERE id=:id AND status IN ('open','acknowledged') RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+        return db.sql("UPDATE public.alerts SET status='resolved',resolved_at=now(),updated_at=now() WHERE id=:id AND status IN ('open','acknowledged') RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
                 .bind("id",id).map((r,m)->alert(r)).one();
     }
-    private AlertResponse alert(io.r2dbc.spi.Row r) { return new AlertResponse(r.get("id",UUID.class),r.get("vehicle_id",UUID.class),r.get("district_id",UUID.class),r.get("kind",String.class),r.get("severity",String.class),r.get("status",String.class),r.get("opened_at",OffsetDateTime.class),r.get("acknowledged_at",OffsetDateTime.class),r.get("resolved_at",OffsetDateTime.class),readJson(r.get("detail",String.class))); }
+    private AlertResponse alert(io.r2dbc.spi.Row r) { return new AlertResponse(r.get("id",UUID.class),r.get("vehicle_id",UUID.class),r.get("district_id",UUID.class),r.get("kind",String.class),r.get("severity",String.class),r.get("status",String.class),r.get("opened_at",OffsetDateTime.class),r.get("acknowledged_at",OffsetDateTime.class),r.get("resolved_at",OffsetDateTime.class),r.get("updated_at",OffsetDateTime.class),readJson(r.get("detail",String.class))); }
     public Mono<Boolean> alertExists(UUID id) { return db.sql("SELECT EXISTS(SELECT 1 FROM public.alerts WHERE id=:id)").bind("id",id).map((r,m)->Boolean.TRUE.equals(r.get(0,Boolean.class))).one(); }
     public Mono<AlertResponse> openOrUpdateVehicleAlert(UUID tenant,UUID vehicle,String kind,String severity,String detailJson) {
         return db.sql("INSERT INTO public.alerts(tenant_id,vehicle_id,kind,severity,detail) VALUES(:tenant,:vehicle,:kind,:severity,CAST(:detail AS jsonb)) "+
                 "ON CONFLICT(tenant_id,vehicle_id,kind) WHERE vehicle_id IS NOT NULL AND status<>'resolved' "+
-                "DO UPDATE SET severity=EXCLUDED.severity,detail=EXCLUDED.detail "+
-                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+                "DO UPDATE SET severity=EXCLUDED.severity,detail=EXCLUDED.detail,updated_at=now() "+
+                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
                 .bind("tenant",tenant).bind("vehicle",vehicle).bind("kind",kind).bind("severity",severity).bind("detail",detailJson)
                 .map((r,m)->alert(r)).one();
     }
     public Mono<AlertResponse> resolveVehicleAlert(UUID vehicle,String kind) {
-        return db.sql("UPDATE public.alerts SET status='resolved',resolved_at=now() WHERE vehicle_id=:vehicle AND kind=:kind AND status<>'resolved' "+
-                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+        return db.sql("UPDATE public.alerts SET status='resolved',resolved_at=now(),updated_at=now() WHERE vehicle_id=:vehicle AND kind=:kind AND status<>'resolved' "+
+                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
                 .bind("vehicle",vehicle).bind("kind",kind).map((r,m)->alert(r)).one();
     }
 

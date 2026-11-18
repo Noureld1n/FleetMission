@@ -46,6 +46,7 @@ This plan turns every requirement in `Backend Sheet.md` into an ordered implemen
   6. Alerts and indexes.
   7. Dashboards and dashboard widgets.
   8. Demo seed data for two tenants.
+  9. Additive alert change timestamps for SSE replay (`V10`).
 - [x] Use PostgreSQL extensions required by the data model: TimescaleDB, PostGIS, `citext`, and UUID generation support. Provision extensions and cluster roles through the administrator-run `DataBase/bootstrap.sql` before Flyway.
 - [x] Create separate `app_owner`, `app_runtime`, and `app_lookup` roles. The running backend uses `app_runtime`; migrations use `app_owner`; lookup functions are narrowly exposed to runtime.
 - [ ] Use UUID primary keys, UTC `timestamptz`, snake_case/plural naming, text plus CHECK constraints for enumerations, and `NOT NULL` except where nullable behavior is documented.
@@ -200,17 +201,21 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Implement `GET /api/stream/events` for authenticated users using a fetch-based browser client contract because native `EventSource` cannot send Authorization headers.
-- [ ] Stream `alert.opened`, `alert.updated`, `fleet.metrics`, and periodic `heartbeat` events.
-- [ ] Use tenant-scoped Redis pub/sub for alert changes and aggregate polling/updates for metrics; keep all payloads as DTOs.
-- [ ] Set alert event IDs to change timestamps. On reconnect, use `Last-Event-ID` to query and replay alerts changed since that timestamp from PostgreSQL.
-- [ ] Do not replay metric events; document that the next live metric update resumes the chart.
-- [ ] Bound per-client buffering and clean up subscriptions on disconnect. Ensure tenant context is carried into background subscription/query work.
-- [ ] Expose SSE connection count and disconnect/error metrics; send heartbeats to keep intermediaries from closing idle streams.
+- [x] Implement `GET /api/stream/events` for authenticated users using a fetch-based browser client contract because native `EventSource` cannot send Authorization headers.
+- [x] Stream `alert.opened`, `alert.updated`, `fleet.metrics`, and periodic `heartbeat` events.
+- [x] Use tenant-scoped Redis pub/sub for alert changes and aggregate polling/updates for metrics; keep all payloads as DTOs.
+- [x] Set alert event IDs to change timestamps. On reconnect, use `Last-Event-ID` to query and page through alerts changed since that timestamp from PostgreSQL.
+- [x] Do not replay metric events; metric events omit SSE IDs, so the next poll resumes the chart without affecting alert replay position.
+- [x] Bound per-client buffering and clean up subscriptions on disconnect. Each replay page and aggregate read establishes tenant context in its transaction.
+- [x] Expose SSE connection count and disconnect/error/overflow metrics; send 15-second heartbeats to keep intermediaries from closing idle streams.
+
+**Schema addition:** Migration `V10__alert_change_timestamps.sql` adds `alerts.updated_at`. Alert open/update/transition writes refresh it, so replay and event IDs share a persisted timestamp. Replay uses `>= Last-Event-ID` to avoid losing alerts that share the same timestamp; clients may receive the last event again and should deduplicate by alert ID and timestamp.
+
+**Client contract:** Use `fetch` with `Authorization: Bearer <token>` and, on reconnect, `Last-Event-ID: <UTC timestamp>` from the most recent alert event. Metric and heartbeat events omit IDs. Fleet metrics are polled every 15 seconds and can update the same minute bucket.
 
 ### Completion gate
 
-- [ ] Client reconnect replays missed alert changes, receives future alert/metric updates, and cannot observe another tenant's events.
+- [ ] Client reconnect replays missed alert changes, receives future alert/metric updates, and cannot observe another tenant's events. Runtime Redis/PostgreSQL and browser reconnection behavior has not been exercised.
 
 ## Phase 8: Map WebSocket, snapshots, tile subscriptions, and conflation
 

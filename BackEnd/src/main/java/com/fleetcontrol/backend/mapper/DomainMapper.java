@@ -6,6 +6,7 @@ import com.fleetcontrol.backend.dto.response.VehicleHistoryResponse;
 import com.fleetcontrol.backend.dto.response.FleetMetricsResponse;
 import com.fleetcontrol.backend.model.VehicleMinuteAggregate;
 import com.fleetcontrol.backend.model.FleetMinuteAggregate;
+import java.time.ZoneOffset;
 import com.fleetcontrol.backend.model.WidgetType;
 import java.util.stream.Collectors;
 
@@ -22,10 +23,10 @@ public final class DomainMapper {
         return WidgetType.valueOf(widget.type().trim().replace('-','_').toUpperCase()).value();
     }
     public static VehicleHistoryResponse.Point toVehicleHistoryPoint(VehicleMinuteAggregate aggregate) {
-        return new VehicleHistoryResponse.Point(aggregate.bucket(),aggregate.batteryAverage(),aggregate.batteryMinimum(),
+        return new VehicleHistoryResponse.Point(aggregate.bucket().withOffsetSameInstant(ZoneOffset.UTC),aggregate.batteryAverage(),aggregate.batteryMinimum(),
                 aggregate.speedAverage(),aggregate.speedMaximum(),aggregate.sampleCount());
     }
     public static FleetMetricsResponse.Point toFleetMetricsPoint(FleetMinuteAggregate aggregate) {
-        return new FleetMetricsResponse.Point(aggregate.bucket(),aggregate.batteryAverage(),aggregate.batteryMinimum(),aggregate.sampleCount());
+        return new FleetMetricsResponse.Point(aggregate.bucket().withOffsetSameInstant(ZoneOffset.UTC),aggregate.batteryAverage(),aggregate.batteryMinimum(),aggregate.sampleCount());
     }
 }

@@ -162,13 +162,14 @@ Alerts are ordinary rows with a small state machine (open, acknowledged, resolve
 | `opened_at` | timestamptz | NN, default `now()` |  |
 | `acknowledged_at` | timestamptz | nullable |  |
 | `resolved_at` | timestamptz | nullable |  |
+| `updated_at` | timestamptz | NN, default `now()`, CK `updated_at >= opened_at` | Changed on alert state/detail updates; source for SSE event IDs and reconnect replay |
 | `detail` | jsonb | NN, default empty object | Free-form context such as the battery level that triggered it |
 |  |  | CK at least one of `vehicle_id`, `district_id` is not null | An alert must point at something |
 |  |  | CK `(status = 'resolved') = (resolved_at IS NOT NULL)` | Status and timestamp cannot disagree |
 |  |  | CK `resolved_at IS NULL OR resolved_at >= opened_at` |  |
 |  |  | UQ `(tenant_id, id)` |  |
 
-**Indexes.** `(tenant_id, status, opened_at DESC)` serves the alert list and the open-alert counter. A partial unique index on `(tenant_id, vehicle_id, kind)` where `status <> 'resolved'` stops the same condition from opening duplicate alerts for one vehicle while one is already active.
+**Indexes.** `(tenant_id, status, opened_at DESC)` serves the alert list and open-alert counter. `(tenant_id, updated_at, id)` serves ordered tenant-scoped SSE replay. A partial unique index on `(tenant_id, vehicle_id, kind)` where `status <> 'resolved'` stops the same condition from opening duplicate alerts for one vehicle while one is already active.
 
 ## Dashboards and widgets
 
