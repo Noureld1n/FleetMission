@@ -111,6 +111,7 @@ export const AlertResponseSchema = z.object({
 export type AlertResponse = z.infer<typeof AlertResponseSchema>
 
 export const WidgetTypeSchema = z.enum(['map', 'live_chart', 'status_tiles', 'alert_list'])
+export type WidgetType = z.infer<typeof WidgetTypeSchema>
 export const DashboardWidgetSchema = z.object({
   id: uuidSchema,
   type: WidgetTypeSchema,

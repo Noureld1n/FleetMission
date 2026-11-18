@@ -26,7 +26,7 @@ function upsertPoints(buffer: ChartData, points: FleetMetricPoint[]) {
   }
 }
 
-export function StreamingFleetChart({ history }: { history: FleetMetricPoint[] }) {
+export function StreamingFleetChart({ history, fillContainer = false }: { history: FleetMetricPoint[]; fillContainer?: boolean }) {
   const host = useRef<HTMLDivElement>(null)
   const plot = useRef<uPlot | null>(null)
   const buffer = useRef<ChartData>([[], []])
@@ -53,8 +53,8 @@ export function StreamingFleetChart({ history }: { history: FleetMetricPoint[] }
     if (!element) return
     const chart = new uPlot(
       {
-        width: Math.max(320, element.clientWidth),
-        height: Math.max(160, element.clientHeight),
+        width: Math.max(240, element.clientWidth),
+        height: Math.max(120, element.clientHeight),
         scales: { x: { time: true }, y: { range: () => [0, 100] } },
         axes: [
           {
@@ -113,14 +113,14 @@ export function StreamingFleetChart({ history }: { history: FleetMetricPoint[] }
   }, [])
 
   return (
-    <div className="mt-3">
+    <div className={fillContainer ? 'flex h-full min-h-0 flex-col' : 'mt-3'}>
       <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
         <span>Average battery</span>
         <span>Last 24 hours · live updates</span>
       </div>
       <div
         ref={host}
-        className="h-48 min-w-0"
+        className={fillContainer ? 'min-h-0 min-w-0 flex-1' : 'h-48 min-w-0'}
         role="img"
         aria-label="Fleet average battery history with live updates"
       />

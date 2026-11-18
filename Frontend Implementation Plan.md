@@ -157,17 +157,17 @@ The browser does not call `POST /ingest/v1/telemetry`, `GET /ingest/v1/commands`
 
 ### Work
 
-- Use React Grid Layout v2 with `useContainerWidth` and both required stylesheets. Map widgets allow map interaction without dragging the dashboard; dragging starts from the widget header.
-- Add owner-only edit mode, drag/resize, local unsaved layout state, save via one `PUT /api/dashboards/{id}`, cancel, and leave-page confirmation.
-- Implement create and delete flows using the corresponding dashboard endpoints, including confirmation and success/error feedback.
-- Complete widget registry components: map, live chart, status tiles, and alert list. Keep view-only mode safe for viewers and edits limited to dashboard owners.
-- Enforce the one-active-map rule: `/map` and a dashboard map widget cannot both mount a map WebSocket simultaneously.
-- Add resize observers so MapLibre calls `resize` and charts update size when widget dimensions change.
-- Ensure dashboard state survives query reloads and only persists after explicit save.
+- [x] Use React Grid Layout v2 with `useContainerWidth` and both required stylesheets. Map widgets allow map interaction without dragging the dashboard; dragging starts from the widget header.
+- [x] Add owner-only edit mode, drag/resize, local unsaved layout state, save via one `PUT /api/dashboards/{id}`, cancel, and leave-page confirmation.
+- [x] Implement create and delete flows using the corresponding dashboard endpoints, including confirmation and success/error feedback.
+- [x] Complete the widget registry for map, live chart, status tiles, and alert list. Status tiles show the documented pending state until the tenant-wide fleet-summary endpoint exists. Keep view-only mode safe for viewers and edits limited to dashboard owners.
+- [x] Enforce the one-active-map rule: `/map` and a dashboard map widget cannot both mount a map WebSocket simultaneously.
+- [x] Add resize observers so MapLibre calls `resize` and charts update size when widget dimensions change.
+- [x] Ensure dashboard state survives query reloads and only persists after explicit save.
 
 ### Completion gate
 
-- An owner can edit and save a dashboard layout; other tenant members can view shared dashboards but cannot edit them; widget resizing does not break maps or charts.
+- [ ] An owner can edit and save a dashboard layout; other tenant members can view shared dashboards but cannot edit them; widget resizing does not break maps or charts. Runtime authorization and visual behavior still need verification against the running stack.
 
 ## Phase 6: Alerts, outage interaction, and operational polish
 

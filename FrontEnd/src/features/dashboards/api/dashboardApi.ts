@@ -4,6 +4,7 @@ import {
   DashboardRequestSchema,
   DashboardResponseSchema,
 } from '@/shared/types/contracts'
+import { z } from 'zod'
 import type { DashboardResponse } from '@/shared/types/contracts'
 
 export type DashboardRequest = {
@@ -36,5 +37,19 @@ export function createDashboard(request: DashboardRequest): Promise<DashboardRes
   return apiRequest('/dashboards', DashboardResponseSchema, {
     method: 'POST',
     body: JSON.stringify(body),
+  })
+}
+
+export function updateDashboard(id: string, request: DashboardRequest): Promise<DashboardResponse> {
+  const body = DashboardRequestSchema.parse(request)
+  return apiRequest(`/dashboards/${encodeURIComponent(id)}`, DashboardResponseSchema, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
+export function deleteDashboard(id: string): Promise<void> {
+  return apiRequest(`/dashboards/${encodeURIComponent(id)}`, z.undefined(), {
+    method: 'DELETE',
   })
 }
