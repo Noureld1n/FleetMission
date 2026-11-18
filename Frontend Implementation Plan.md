@@ -66,37 +66,37 @@ The browser does not call `POST /ingest/v1/telemetry`, `GET /ingest/v1/commands`
 
 ### Work
 
-- Create the frontend with the Vite React/TypeScript template. Use Node.js 20.19+ or 22.12+ as specified in the Frontend Sheet.
-- Install and configure React Router, TanStack Query, Zustand, MapLibre GL JS, uPlot, Recharts, React Grid Layout v2, Zod, shadcn/ui, Tailwind v4, and Lucide icons.
-- Configure the Tailwind Vite plugin, global stylesheet, `@` path alias, shadcn setup, TypeScript strictness, ESLint, and Prettier.
-- Add `.env.example` with `VITE_API_BASE_URL`, `VITE_WS_URL`, and `VITE_MAP_STYLE_URL`; never put credentials or server secrets in Vite variables.
-- Configure the development proxy for `/api` and `/ws`; enable WebSocket proxy upgrades. Confirm SSE responses stream without buffering in deployment configuration.
-- Create the feature folder layout from the Frontend Sheet and establish import boundaries before features grow.
-- Create Zod schemas and TypeScript types from the backend DTOs for auth, page responses, vehicles, districts, alerts, dashboards, metrics, outage responses, SSE events, and map messages.
-- Document the map protocol precisely: viewport message shape, tile cluster map, vehicle field names, nullable fields, and how `viewportVersion` is checked.
-- Resolve the fleet-summary API gap before implementing complete status tiles: the backend endpoint reference does not currently expose fleet-wide vehicle counts by status. Add `GET /api/fleet/summary` to the backend plan/API before treating those counts as complete; do not count only the first page of vehicles.
+- [x] Create the frontend with the Vite React/TypeScript template. Use Node.js 20.19+ or 22.12+ as specified in the Frontend Sheet.
+- [x] Install and configure React Router, TanStack Query, Zustand, MapLibre GL JS, uPlot, Recharts, React Grid Layout v2, Zod, shadcn/ui, Tailwind v4, and Lucide icons. Add the listed test, lint, and formatting development tools.
+- [x] Configure the Tailwind Vite plugin, global stylesheet, `@` path alias, shadcn setup, TypeScript strictness, ESLint, and Prettier.
+- [x] Add `.env.example` with `VITE_API_BASE_URL`, `VITE_WS_URL`, and `VITE_MAP_STYLE_URL`; never put credentials or server secrets in Vite variables.
+- [x] Configure the development proxy for `/api`, `/ingest`, `/actuator`, and `/ws`; enable WebSocket proxy upgrades. Documented unbuffered SSE as a production proxy requirement for the deployment phase.
+- [x] Create the feature folder layout from the Frontend Sheet and establish import boundaries before features grow.
+- [x] Create Zod schemas and TypeScript types from backend DTOs for auth, page responses, vehicles, districts, alerts, dashboards, metrics, outage responses, SSE payloads, and map messages.
+- [x] Document the map protocol precisely: viewport message shape, tile cluster map, vehicle field names, nullable fields, and `viewportVersion` handling.
+- [x] Identify and document the fleet-summary API gap. The backend does not currently expose fleet-wide vehicle counts by status; status tiles remain pending that tenant-scoped endpoint and must not count only the first vehicle page.
 
 ### Completion gate
 
-- Vite starts, type checking/linting work, the dev proxy reaches the backend, environment configuration has safe examples, and shared response/message schemas reflect actual backend DTOs.
+- [x] Vite starts, type checking/linting and production bundling succeed, proxy routes target the documented backend ports, environment configuration has safe examples, and shared response/message schemas reflect backend DTOs. Live proxy connectivity and unbuffered SSE still need a running backend and production proxy configuration.
 
 ## Phase 1: Visual foundation, app shell, and authentication
 
 ### Work
 
-- Build global design tokens for light/dark surfaces, text, status colors, borders, focus rings, shadows, spacing, and typography. Start with the dark control-room theme and keep colors semantic so an alternate theme can be added consistently.
-- Build shared navigation, top bar, breadcrumbs/page titles, connection badge, toast system, skeletons, empty states, retry panels, confirmation dialog, and accessible form controls with shadcn/ui.
-- Create the login page with a focused layout, clear Fleet Mission Control identity, email/password form, validation feedback, and responsive styling.
-- Implement a typed `fetch` helper that adds the JWT, parses JSON/problem-details responses, validates successful bodies with Zod, and maps failures into `ApiError`.
-- Implement the auth store, session-storage hydration, `POST /api/auth/login`, `GET /api/me`, logout cleanup, and 401 handling.
-- Add route guards for signed-in users and operator-only controls. The backend remains the authority for access control.
-- Create the authenticated shell and route table. Lazy-load MapLibre and chart routes so the login bundle stays small.
-- Create TanStack Query and app-level realtime/connection providers without opening realtime connections yet.
+- [x] Build global design tokens for light/dark surfaces, text, status colors, borders, focus rings, shadows, spacing, and typography. Start with the dark control-room theme and keep colors semantic so an alternate theme can be added consistently.
+- [x] Build shared navigation, top bar, breadcrumbs/page titles, connection badge, toast system, skeletons, empty states, retry panels, confirmation dialog, and accessible form controls with shadcn/ui.
+- [x] Create the login page with a focused layout, clear Fleet Mission Control identity, email/password form, validation feedback, and responsive styling.
+- [x] Implement a typed `fetch` helper that adds the JWT, parses JSON/problem-details responses, validates successful bodies with Zod, and maps failures into `ApiError`.
+- [x] Implement the auth store, session-storage hydration, `POST /api/auth/login`, `GET /api/me`, logout cleanup, and 401 handling.
+- [x] Add reusable route guards for signed-in users and operator-only routes. The backend remains the authority for access control.
+- [x] Create the authenticated shell and route table. Add route-level lazy-loading boundaries for map and vehicle detail routes; MapLibre and chart modules will be introduced in those routes in later phases.
+- [x] Create TanStack Query and app-level toast/connection UI providers without opening realtime connections yet.
 
 ### Completion gate
 
-- A user can log in, refresh without losing the current tab session, see their tenant and role, visit guarded routes, and log out without retaining cached data from the previous session.
-- The shell has consistent loading, error, keyboard-focus, and responsive behavior.
+- [ ] A user can log in against the running backend, refresh without losing the current tab session, see their tenant and role, visit guarded routes, and log out without retaining cached data from the previous session. Runtime auth verification remains outstanding.
+- [x] The shell has consistent loading, error, keyboard-focus, and responsive behavior.
 
 ## Phase 2: Dashboards, fleet browsing, districts, and history
 

@@ -1,0 +1,7 @@
+import { createContext } from 'react'
+
+export type ToastKind = 'success' | 'error' | 'info'
+export type ToastItem = { id: number; title: string; description?: string; kind: ToastKind }
+export type ToastContextValue = { toast: (item: Omit<ToastItem, 'id'>) => void }
+
+export const ToastContext = createContext<ToastContextValue | null>(null)
