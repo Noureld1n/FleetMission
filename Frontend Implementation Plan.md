@@ -102,19 +102,19 @@ The browser does not call `POST /ingest/v1/telemetry`, `GET /ingest/v1/commands`
 
 ### Work
 
-- Implement typed API functions for dashboard, vehicle, district, and metrics endpoints, with query keys and response validation.
-- Build `/dashboards` with owned/shared dashboard distinction and an operator-only create action.
-- Build dashboard read mode and the first widget registry for `map`, `live_chart`, `status_tiles`, and `alert_list`. Use the backend widget config and grid fields as the source of saved layout.
-- Build `/vehicles` with status/district filters, cursor pagination, clear active filters, and an empty state.
-- Build `/vehicles/:id` with latest state, status, district, and a Recharts history panel using `from`/`to` query parameters.
-- Build district selection/display from `GET /api/districts`; add an operator district creation form for `POST /api/districts` with closed polygon rings and map-friendly validation.
-- Build fleet metric query hooks and render the slower per-minute history series.
+- [x] Implement typed API functions for dashboard, vehicle, district, and metrics endpoints, with query keys and response validation.
+- [x] Build `/dashboards` with owned/shared dashboard distinction and an operator-only create action.
+- [x] Build dashboard read mode and the first widget registry for `map`, `live_chart`, `status_tiles`, and `alert_list`. Use the backend widget config and grid fields as the source of saved layout.
+- [x] Build `/vehicles` with status/district filters, cursor pagination, clear active filters, and an empty state.
+- [x] Build `/vehicles/:id` with latest state, status, district, and a Recharts history panel using `from`/`to` query parameters.
+- [x] Build district selection/display from `GET /api/districts`; add an operator district creation form for `POST /api/districts` with closed polygon rings and map-friendly validation.
+- [x] Build fleet metric query hooks and render the slower per-minute history series.
 - Add the fleet-summary endpoint to backend integration before showing authoritative counts in status tiles.
 - Handle 404, empty latest state, invalid query ranges, paging, and retry without blanking the whole application shell.
 
 ### Completion gate
 
-- Viewers can browse only their tenant's data, operators see the permitted create controls, dashboards load with their widgets, and vehicle history is readable at desktop and narrow widths.
+- [ ] Viewers can browse only their tenant's data, operators see the permitted create controls, dashboards load with their widgets, and vehicle history is readable at desktop and narrow widths. Backend runtime authorization and responsive visual review remain to be verified against a running stack.
 - Status tiles use a tenant-wide count response rather than an incomplete vehicle page.
 
 ## Phase 3: Realtime client foundation and live map

@@ -5,10 +5,18 @@ import { PhasePage } from '@/app/PhasePage'
 import { RequireAuth } from '@/app/RouteGuards'
 import { UnauthorizedRedirect } from '@/app/providers'
 import { LoginPage } from '@/features/auth/components/LoginPage'
+import { DashboardListPage } from '@/features/dashboards/components/DashboardListPage'
+import { DistrictsPage } from '@/features/fleet/components/DistrictsPage'
+import { VehicleListPage } from '@/features/fleet/components/VehicleListPage'
 import { PageSkeleton } from '@/shared/ui/Feedback'
 
 const MapRoute = lazy(() => import('@/features/map/MapRoute'))
 const VehicleDetailRoute = lazy(() => import('@/features/fleet/VehicleDetailRoute'))
+const DashboardDetailPage = lazy(() =>
+  import('@/features/dashboards/components/DashboardDetailPage').then((module) => ({
+    default: module.DashboardDetailPage,
+  })),
+)
 
 function NotFoundPage() {
   return (
@@ -38,24 +46,13 @@ export function AppRouter() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<Navigate to="/dashboards" replace />} />
-            <Route
-              path="dashboards"
-              element={
-                <PhasePage
-                  eyebrow="Command overview"
-                  title="Operations overview"
-                  description="A clear picture of your fleet, current alerts, and the work that needs attention."
-                />
-              }
-            />
+            <Route path="dashboards" element={<DashboardListPage />} />
             <Route
               path="dashboards/:id"
               element={
-                <PhasePage
-                  eyebrow="Dashboard workspace"
-                  title="Your operations dashboard"
-                  description="Saved fleet widgets and editable layouts arrive in the dashboard phase."
-                />
+                <Suspense fallback={<PageSkeleton rows={2} />}>
+                  <DashboardDetailPage />
+                </Suspense>
               }
             />
             <Route
@@ -66,16 +63,8 @@ export function AppRouter() {
                 </Suspense>
               }
             />
-            <Route
-              path="vehicles"
-              element={
-                <PhasePage
-                  eyebrow="Fleet directory"
-                  title="Vehicles"
-                  description="Search, filter, and open a detailed view of each vehicle in your tenant."
-                />
-              }
-            />
+            <Route path="vehicles" element={<VehicleListPage />} />
+            <Route path="districts" element={<DistrictsPage />} />
             <Route
               path="vehicles/:id"
               element={

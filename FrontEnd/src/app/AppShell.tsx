@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Map,
+  MapPinned,
   Menu,
   Truck,
   X,
@@ -20,12 +21,14 @@ const navigation = [
   { to: '/dashboards', label: 'Overview', icon: LayoutDashboard },
   { to: '/map', label: 'Live map', icon: Map },
   { to: '/vehicles', label: 'Vehicles', icon: Truck },
+  { to: '/districts', label: 'Districts', icon: MapPinned },
   { to: '/alerts', label: 'Alerts', icon: Bell },
 ]
 
 function pageTitle(pathname: string) {
   if (pathname.startsWith('/map')) return 'Live fleet map'
   if (pathname.startsWith('/vehicles')) return 'Vehicles'
+  if (pathname.startsWith('/districts')) return 'Districts'
   if (pathname.startsWith('/alerts')) return 'Alert center'
   if (pathname.startsWith('/dashboards/')) return 'Dashboard workspace'
   return 'Operations overview'
