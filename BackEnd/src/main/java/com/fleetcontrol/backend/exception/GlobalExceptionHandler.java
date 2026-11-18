@@ -2,6 +2,7 @@ package com.fleetcontrol.backend.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebInputException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.net.URI;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final MeterRegistry meters;
+    public GlobalExceptionHandler(MeterRegistry meters) { this.meters=meters; }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ProblemDetail> handleApiException(ApiException exception, ServerWebExchange exchange) {
@@ -40,6 +44,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WebExchangeBindException.class)
     public ResponseEntity<ProblemDetail> handleBindingException(
             WebExchangeBindException exception, ServerWebExchange exchange) {
+        countRejectedIngestion(exchange);
         ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Request validation failed.", exchange);
         problem.setTitle("Bad Request");
         Map<String, List<String>> errors = exception.getFieldErrors().stream()
@@ -55,10 +60,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ProblemDetail> handleMethodValidation(
             HandlerMethodValidationException exception, ServerWebExchange exchange) {
+        countRejectedIngestion(exchange);
         ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Request validation failed.", exchange);
         problem.setTitle("Bad Request");
         problem.setProperty("code", "VALIDATION_FAILED");
         return response(HttpStatus.BAD_REQUEST, problem);
+    }
+
+    @ExceptionHandler(ServerWebInputException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidInput(ServerWebInputException exception,ServerWebExchange exchange) {
+        countRejectedIngestion(exchange);
+        ProblemDetail problem=problem(HttpStatus.BAD_REQUEST,"Request body or parameter is invalid.",exchange);
+        problem.setTitle("Bad Request");
+        problem.setProperty("code","INVALID_REQUEST");
+        return response(HttpStatus.BAD_REQUEST,problem);
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -119,5 +134,12 @@ public class GlobalExceptionHandler {
     private static String titleFor(HttpStatusCode status) {
         HttpStatus knownStatus = HttpStatus.resolve(status.value());
         return knownStatus == null ? "Request Error" : knownStatus.getReasonPhrase();
+    }
+    private void countRejectedIngestion(ServerWebExchange exchange) {
+        if(exchange.getRequest().getPath().value().startsWith("/ingest/v1/telemetry")) {
+            meters.counter("ingest.events.received").increment();
+            meters.counter("ingest.events.rejected").increment();
+            meters.counter("ingest.requests.rejected").increment();
+        }
     }
 }

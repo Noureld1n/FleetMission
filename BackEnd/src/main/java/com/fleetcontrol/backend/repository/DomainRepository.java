@@ -74,6 +74,19 @@ public class DomainRepository {
     }
     private AlertResponse alert(io.r2dbc.spi.Row r) { return new AlertResponse(r.get("id",UUID.class),r.get("vehicle_id",UUID.class),r.get("district_id",UUID.class),r.get("kind",String.class),r.get("severity",String.class),r.get("status",String.class),r.get("opened_at",OffsetDateTime.class),r.get("acknowledged_at",OffsetDateTime.class),r.get("resolved_at",OffsetDateTime.class),readJson(r.get("detail",String.class))); }
     public Mono<Boolean> alertExists(UUID id) { return db.sql("SELECT EXISTS(SELECT 1 FROM public.alerts WHERE id=:id)").bind("id",id).map((r,m)->Boolean.TRUE.equals(r.get(0,Boolean.class))).one(); }
+    public Mono<AlertResponse> openOrUpdateVehicleAlert(UUID tenant,UUID vehicle,String kind,String severity,String detailJson) {
+        return db.sql("INSERT INTO public.alerts(tenant_id,vehicle_id,kind,severity,detail) VALUES(:tenant,:vehicle,:kind,:severity,CAST(:detail AS jsonb)) "+
+                "ON CONFLICT(tenant_id,vehicle_id,kind) WHERE vehicle_id IS NOT NULL AND status<>'resolved' "+
+                "DO UPDATE SET severity=EXCLUDED.severity,detail=EXCLUDED.detail "+
+                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+                .bind("tenant",tenant).bind("vehicle",vehicle).bind("kind",kind).bind("severity",severity).bind("detail",detailJson)
+                .map((r,m)->alert(r)).one();
+    }
+    public Mono<AlertResponse> resolveVehicleAlert(UUID vehicle,String kind) {
+        return db.sql("UPDATE public.alerts SET status='resolved',resolved_at=now() WHERE vehicle_id=:vehicle AND kind=:kind AND status<>'resolved' "+
+                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,detail::text detail")
+                .bind("vehicle",vehicle).bind("kind",kind).map((r,m)->alert(r)).one();
+    }
 
     public Flux<DashboardResponse> dashboards(UUID user,UUID cursor,int count) {
         String sql="SELECT id,owner_id,name,is_shared,created_at,updated_at FROM public.dashboards WHERE (owner_id=:user OR is_shared=true) AND (:cursor IS NULL OR id>:cursor) ORDER BY id LIMIT :count";

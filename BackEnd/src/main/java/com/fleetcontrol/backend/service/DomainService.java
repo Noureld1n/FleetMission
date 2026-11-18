@@ -13,6 +13,10 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Function;
 
@@ -21,8 +25,9 @@ public class DomainService {
     private final DomainRepository repository;
     private final TenantTransaction transactions;
     private final ReactiveStringRedisTemplate redis;
-    public DomainService(DomainRepository repository,TenantTransaction transactions,ReactiveStringRedisTemplate redis) {
-        this.repository=repository; this.transactions=transactions; this.redis=redis;
+    private final Clock clock;
+    public DomainService(DomainRepository repository,TenantTransaction transactions,ReactiveStringRedisTemplate redis,Clock clock) {
+        this.repository=repository; this.transactions=transactions; this.redis=redis; this.clock=clock;
     }
 
     public Mono<MeResponse> me() { return DomainSupport.identity().flatMap(id->inTransaction(()->repository.me(id.subjectId()).switchIfEmpty(notFound("USER_NOT_FOUND","Current user was not found.")))); }
@@ -34,9 +39,33 @@ public class DomainService {
         return DomainSupport.identity().flatMap(identity->inTransaction(()->repository.vehicle(id)
                 .switchIfEmpty(notFound("VEHICLE_NOT_FOUND","Vehicle was not found.")))
                 .flatMap(vehicle->redis.<String,String>opsForHash().entries(vehicleKey(vehicle.id(),identity.tenantId())).collectMap(Map.Entry::getKey,Map.Entry::getValue)
-                        .map(state->new VehicleResponse(vehicle.id(),vehicle.externalRef(),vehicle.kind(),vehicle.homeDistrictId(),vehicle.status(),vehicle.createdAt(),vehicle.retiredAt(),state.isEmpty()?null:Map.copyOf(state)))
+                        .map(state->{state.remove("ts_epoch_ms");return new VehicleResponse(vehicle.id(),vehicle.externalRef(),vehicle.kind(),vehicle.homeDistrictId(),vehicle.status(),vehicle.createdAt(),vehicle.retiredAt(),state.isEmpty()?null:Map.copyOf(state));})
                         .defaultIfEmpty(vehicle)));
     }
+    public Mono<VehicleHistoryResponse> vehicleHistory(UUID vehicleId,Instant from,Instant to) {
+        TimeRange range=timeRange(from,to);
+        return inTransaction(()->repository.vehicle(vehicleId)
+                .switchIfEmpty(notFound("VEHICLE_NOT_FOUND","Vehicle was not found."))
+                .then(repository.vehicleHistory(vehicleId,range.from().atOffset(ZoneOffset.UTC),range.to().atOffset(ZoneOffset.UTC),range.limit()).collectList())
+                .map(points->new VehicleHistoryResponse(vehicleId,range.from(),range.to(),points.stream().map(DomainMapper::toVehicleHistoryPoint).toList())));
+    }
+    public Mono<FleetMetricsResponse> fleetMetrics(Instant from,Instant to) {
+        TimeRange range=timeRange(from,to);
+        return inTransaction(()->repository.fleetHistory(range.from().atOffset(ZoneOffset.UTC),range.to().atOffset(ZoneOffset.UTC),range.limit())
+                .map(DomainMapper::toFleetMetricsPoint).collectList().map(points->new FleetMetricsResponse(range.from(),range.to(),points)));
+    }
+    private TimeRange timeRange(Instant requestedFrom,Instant requestedTo) {
+        Instant now=clock.instant();
+        Instant end=requestedTo==null?now:requestedTo;
+        Instant start=requestedFrom==null?end.minus(Duration.ofHours(24)):requestedFrom;
+        if(start.isAfter(end)) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_TIME_RANGE","The from timestamp must be at or before to.");
+        if(end.isAfter(now)) throw new ApiException(HttpStatus.BAD_REQUEST,"FUTURE_TIME_RANGE","The to timestamp cannot be in the future.");
+        if(Duration.between(start,end).compareTo(Duration.ofDays(7))>0)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"TIME_RANGE_TOO_LARGE","History and metrics queries are limited to seven days.");
+        int maxPoints=(int)(Duration.between(start,end).toMinutes()+2);
+        return new TimeRange(start,end,Math.max(1,maxPoints));
+    }
+    private record TimeRange(Instant from,Instant to,int limit) {}
     private static String vehicleKey(UUID id,UUID tenant) { return "t:"+tenant+":v:"+id; }
     public Mono<PageResponse<DistrictResponse>> districts(String cursor,int limit) {
         UUID c=DomainSupport.cursor(cursor); int n=DomainSupport.limit(limit);

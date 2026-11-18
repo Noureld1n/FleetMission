@@ -7,9 +7,11 @@ import com.fleetcontrol.backend.service.DomainService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import java.util.UUID;
+import java.time.Instant;
 
 @RestController
 @RequestMapping(path="/api", produces=MediaType.APPLICATION_JSON_VALUE)
@@ -25,6 +27,12 @@ public class DomainController {
         return service.vehicles(status,district,cursor,limit);
     }
     @GetMapping("/vehicles/{id}") public Mono<VehicleResponse> vehicle(@PathVariable UUID id) { return service.vehicle(id); }
+    @GetMapping("/vehicles/{id}/history") public Mono<VehicleHistoryResponse> vehicleHistory(
+            @PathVariable UUID id,
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        return service.vehicleHistory(id,from,to);
+    }
 
     @GetMapping("/districts") public Mono<PageResponse<DistrictResponse>> districts(
             @RequestParam(required=false) String cursor,@RequestParam(defaultValue="50") int limit) {
@@ -33,6 +41,12 @@ public class DomainController {
     @PostMapping(path="/districts",consumes=MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<DistrictResponse> createDistrict(@Valid @RequestBody CreateDistrictRequest request) { return service.createDistrict(request); }
+
+    @GetMapping("/metrics/fleet") public Mono<FleetMetricsResponse> fleetMetrics(
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        return service.fleetMetrics(from,to);
+    }
 
     @GetMapping("/alerts") public Mono<PageResponse<AlertResponse>> alerts(
             @RequestParam(required=false) String status,@RequestParam(required=false) String severity,

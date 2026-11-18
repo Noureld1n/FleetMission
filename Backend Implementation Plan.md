@@ -157,42 +157,44 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Define telemetry request DTOs and enforce batch-size and all field-range constraints before queueing.
-- [ ] Implement `POST /ingest/v1/telemetry` authenticated by API key. Resolve tenant only from the authenticated key and reject events referencing vehicles outside that tenant.
-- [ ] Maintain/cache the tenant's valid vehicle ID set and define refresh/invalidation behavior when vehicle records change.
-- [ ] Assign per-vehicle sequence numbers with an atomic Redis increment. Define Redis key initialization/rebuild behavior so sequence numbers resume from the greatest stored telemetry value after Redis loss.
-- [ ] Define Redis key names exactly as tenant-scoped in the data model: latest vehicle hashes, tenant geo index, tile-count hashes, update channel, optional tile channels, and alert channel.
-- [ ] Update Redis latest state, geo index and tile counts, then publish vehicle updates. Ensure all keys/channels include tenant ID.
-- [ ] Queue accepted events into a bounded shared Reactor sink and return `202 Accepted` only when queued according to the API contract.
-- [ ] Document and implement queue-full behavior, Redis failure behavior, database failure behavior, retry policy, duplicate handling and what the accepted response guarantees. Do not acknowledge data whose loss behavior is undefined.
-- [ ] Group persistence work by tenant before buffering so each database transaction has one tenant. Use `bufferTimeout` with configured size/time bounds and one batched insert statement per batch.
-- [ ] Use conflict-ignore on `(vehicle_id, ts)` for idempotent retries. Retry transient failures with exponential backoff and a bounded strategy; ensure exhausted failures are observable and recoverable rather than silently discarded.
-- [ ] Keep the TimescaleDB write as the history path and Redis as latest-state/live path, following the documented ordering only after failure guarantees are explicit.
-- [ ] Evaluate alert rules after accepted ingestion; initial rules include low battery and vehicle offline. Open/update alerts and publish alert changes.
-- [ ] Start and stop the sink/persistence subscriptions through lifecycle-managed beans. Name/checkpoint/tag the pipelines and limit concurrent Redis/database work.
-- [ ] Add ingestion metrics: events received/accepted/rejected per second, queue depth/capacity/drops, batch size, batch write latency, retries and terminal failures.
+- [x] Define telemetry request DTOs and enforce batch-size and all field-range constraints before queueing. Requests are capped at 500 events and the configured batch size.
+- [x] Implement `POST /ingest/v1/telemetry` authenticated by API key. Resolve tenant only from the authenticated key and reject events referencing vehicles outside that tenant.
+- [x] Maintain/cache the tenant's valid vehicle ID set and define refresh/invalidation behavior when vehicle records change. The tenant-keyed cache refreshes after 30 seconds and exposes explicit invalidation.
+- [x] Assign per-vehicle sequence numbers with an atomic Redis increment. On a missing hash, read the latest persisted telemetry row and seed state/sequence before applying the new event.
+- [x] Define Redis key names exactly as tenant-scoped in the data model: latest vehicle hashes, tenant geo index, tile-count hashes, update channel, optional tile channels, and alert channel.
+- [x] Update Redis latest state, geo index and tile counts, then publish vehicle updates. Tenant IDs prefix all live and recovery keys/channels.
+- [x] Queue accepted events into a bounded shared Reactor sink and return `202 Accepted` only when queued according to the API contract.
+- [x] Define failure behavior: queue capacity is reserved before Redis mutation; queue-full/Redis errors return a problem response; database writes retry five times with capped exponential backoff, then move to a bounded tenant recovery list. If recovery storage is unavailable/full, the batch remains in a bounded in-memory held queue and consumes queue capacity until it can be stored or persisted. Duplicate `(vehicle_id, ts)` inserts are ignored.
+- [x] Group persistence work by tenant before buffering so each database transaction has one tenant. Use `bufferTimeout` with configured size/time bounds and one multi-row insert statement per batch.
+- [x] Use conflict-ignore on `(vehicle_id, ts)` for idempotent retries. Retry transient failures with a bounded strategy; exhausted failures are measured/logged and retained in recovery storage or the capacity-reserved held queue.
+- [x] Keep the TimescaleDB write as the history path and Redis as latest-state/live path: validate, update/publish Redis, enqueue, then persist history.
+- [x] Evaluate low-battery and offline rules, resolve alerts when conditions clear, and publish alert changes. A periodic stale-telemetry sweep applies `app.alerts.offline-after`.
+- [x] Start and stop the sink/persistence subscriptions through a lifecycle-managed bean. Name/checkpoint the pipeline and bound buffers/concurrency.
+- [x] Add ingestion metrics for events received/accepted/rejected/persisted, queue depth/capacity/drops, batch size/write latency, retry attempts, recovery saturation, and terminal failures.
+
+**Acceptance guarantee:** `202 Accepted` means the batch passed validation and tenant ownership checks, its Redis live updates were applied/published, and it entered the bounded in-process sink. Persistence is asynchronous. Database outages are retried and then recovered through Redis or a capacity-reserved in-memory held queue. An abrupt process loss before a batch reaches PostgreSQL or Redis recovery storage can still lose that in-memory batch; the completion gate therefore requires runtime failure testing before claiming durable acceptance.
 
 ### Completion gate
 
-- [ ] A valid simulator-style batch is accepted and saved; retrying it does not add duplicate `(vehicle_id, ts)` rows.
-- [ ] Invalid batches, cross-tenant vehicle references, API-key errors, queue saturation and dependency failures have explicit observable outcomes.
+- [ ] A valid simulator-style batch is accepted and saved; retrying it does not add duplicate `(vehicle_id, ts)` rows. This has not been exercised against PostgreSQL/Redis.
+- [ ] Invalid batches, cross-tenant vehicle references, API-key errors, queue saturation and dependency failures have explicit observable outcomes. Runtime security and failure-path behavior remains unverified.
 
 ## Phase 6: Live telemetry reads, metrics, and alert persistence
 
 ### Work
 
-- [ ] Implement per-vehicle history `GET /api/vehicles/{id}/history` using `telemetry_1m` tenant-filtered view.
-- [ ] Implement fleet chart `GET /api/metrics/fleet` using `telemetry_fleet_1m` tenant-filtered view.
-- [ ] Confirm runtime has no direct privileges to aggregates and only reads through tenant-filtered security-barrier views.
-- [ ] Persist alerts with valid same-tenant vehicle/district foreign keys and the specified state/timestamp consistency constraints.
-- [ ] Implement alert creation/update idempotency and active per-vehicle/kind deduplication. Add district-wide deduplication if outage scenarios require it.
-- [ ] Add alert-list metrics/counters if useful, without exposing tenant data in metric labels.
-- [ ] Ensure chart/history APIs apply cursor/limit or bounded time ranges to avoid unbounded reads.
+- [x] Implement per-vehicle history `GET /api/vehicles/{id}/history` using `telemetry_1m` tenant-filtered view.
+- [x] Implement fleet chart `GET /api/metrics/fleet` using `telemetry_fleet_1m` tenant-filtered view.
+- [x] Confirm migration grants deny runtime direct aggregate access and repository queries use only tenant-filtered security-barrier views. Live role grants have not yet been checked against the database.
+- [x] Persist alerts with valid same-tenant vehicle/district foreign keys and the specified state/timestamp consistency constraints. Vehicle alerts are created inside tenant transactions; database constraints enforce same-tenant references and timestamps.
+- [x] Implement alert creation/update idempotency and active per-vehicle/kind deduplication. District-wide deduplication remains for the outage-scenario phase.
+- [x] Review alert-list metrics; no extra alert-list counters are needed yet. Existing ingestion and alert processing metrics have no tenant labels.
+- [x] Ensure chart/history APIs use a default 24-hour time range with a strict seven-day maximum and a bounded result size.
 
 ### Completion gate
 
-- [ ] Aggregate reads return only the current tenant's metrics and include the newest real-time aggregate interval.
-- [ ] Alert state transitions remain consistent in the database and produce events for downstream streaming.
+- [ ] Aggregate reads return only the current tenant's metrics and include the newest real-time aggregate interval. Runtime behavior has not yet been checked against TimescaleDB.
+- [ ] Alert state transitions remain consistent in the database and produce events for downstream streaming. Database and Redis behavior has not yet been exercised.
 
 ## Phase 7: SSE event stream and replay behavior
 
