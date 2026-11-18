@@ -121,36 +121,37 @@ The browser does not call `POST /ingest/v1/telemetry`, `GET /ingest/v1/commands`
 
 ### Work
 
-- Implement one app-level fetch-based SSE client with bearer auth, parsing for `alert.opened`, `alert.updated`, `fleet.metrics`, and `heartbeat`, and Zod validation for each event.
-- Resume alert events with `Last-Event-ID`; reconnect with capped exponential backoff and jitter; mark the stream stale if expected events/heartbeats stop; stop retrying after 401.
-- Merge alert events into TanStack Query cache and append/upsert fleet metric points in the appropriate live chart buffer.
-- Implement the plain WebSocket client with explicit connecting/authenticating/ready/reconnecting/closed states, JWT first-frame auth, timeout handling, backoff/jitter, cleanup, and current-viewport resend after reconnect.
-- Define strict discriminated Zod schemas for `ready`, `snapshot`, `delta`, `clusters`, and `error`. Reject malformed messages safely and send auth failure to the login flow.
-- Implement a Zustand map store keyed by vehicle ID. Merge snapshots/deltas only when `seq` increases, reject messages for old viewport versions, and track selection and connection state.
-- Build MapLibre setup with a namespace import, tested worker configuration for Vite, WebGL2 availability handling, vector basemap, district layer, vehicle layer, and selected-vehicle highlight.
-- Build `/map` with legend, map controls, filters, vehicle detail side panel, live status indicator, and operator-only outage action placeholder.
-- Debounce map `moveend`/`zoomend` events and send the documented viewport message after the socket is ready.
+- [x] Implement one app-level fetch-based SSE client with bearer auth, parsing for `alert.opened`, `alert.updated`, `fleet.metrics`, and `heartbeat`, and Zod validation for each event.
+- [x] Resume alert events with `Last-Event-ID`; reconnect with capped exponential backoff and jitter; mark the stream stale if expected events/heartbeats stop; stop retrying after 401.
+- [x] Merge alert events into TanStack Query cache and append/upsert fleet metric points in the appropriate live chart buffer.
+- [x] Implement the plain WebSocket client with explicit connecting/authenticating/ready/reconnecting/closed states, JWT first-frame auth, timeout handling, backoff/jitter, cleanup, and current-viewport resend after reconnect.
+- [x] Define strict discriminated Zod schemas for `ready`, `snapshot`, `delta`, `clusters`, and `error`. Reject malformed messages safely and send auth failure to the login flow.
+- [x] Implement a Zustand map store keyed by vehicle ID. Merge snapshots/deltas only when `seq` increases, reject messages for old viewport versions, and track selection and connection state.
+- [x] Build MapLibre setup with a namespace import, tested worker configuration for Vite, WebGL2 availability handling, vector basemap, district layer, vehicle layer, and selected-vehicle highlight.
+- [x] Build `/map` with legend, map controls, filters, vehicle detail side panel, live status indicator, and operator-only outage action placeholder.
+- [x] Debounce map `moveend`/`zoomend` events and send the documented viewport message after the socket is ready.
 
 ### Completion gate
 
-- A signed-in user sees their tenant's vehicles move on the map, district boundaries render, selected vehicle details load, and reconnect restores the current viewport without stale sequence regressions.
+- [ ] A signed-in user sees their tenant's vehicles move on the map, district boundaries render, selected vehicle details load, and reconnect restores the current viewport without stale sequence regressions. Runtime verification needs the backend, Redis, a configured vector style URL, and telemetry flowing.
 
 ## Phase 4: Viewport correctness, clusters, and rendering performance
 
 ### Work
 
-- Synchronize map bounds, zoom, and monotonically increasing `viewportVersion` through the map store.
-- Parse low-zoom `clusters` responses and render count-sized GeoJSON circles with readable labels and a compact legend; hide individual vehicle features while clusters are active.
-- On new snapshots, merge by `seq` and remove vehicles that are no longer in the current viewport. Ignore old viewport responses.
-- Build GeoJSON from Zustand data outside React render cycles. Update the MapLibre sources at most once per animation frame and avoid DOM markers.
-- Pause the frame update loop naturally in hidden tabs; clean up animation frames, map listeners, sources, and socket subscriptions on unmount.
-- Keep high-frequency chart buffers in chart-owned arrays and redraw uPlot on a timer, not per event. Upsert repeated metric timestamps rather than duplicating aggregate buckets.
-- Profile representative fleet sizes and viewport changes; fix avoidable rerenders with narrow Zustand selectors.
-- Show a friendly WebGL2/map-style error without taking down vehicle, alert, or dashboard routes.
+- [x] Synchronize map bounds, zoom, and monotonically increasing `viewportVersion` through the map store. Viewport changes are committed after a debounce and reconnects resend the current version.
+- [x] Parse low-zoom `clusters` responses and render count-sized GeoJSON circles with readable labels and a compact legend; hide individual vehicle features while clusters are active.
+- [x] On new snapshots, merge by `seq` and remove vehicles that are no longer in the current viewport. Ignore responses whose `viewportVersion` does not match the current view.
+- [x] Build GeoJSON from Zustand data outside React render cycles. Update the MapLibre sources at most once per animation frame and avoid DOM markers.
+- [x] Let animation frames pause naturally in hidden tabs; clean up animation frames, map listeners, sources, and store subscriptions on unmount.
+- [x] Keep high-frequency chart buffers in chart-owned arrays and redraw uPlot on a timer, not per event. Upsert repeated metric timestamps rather than duplicating aggregate buckets.
+- [x] Use narrow Zustand selectors to avoid unrelated React renders during live map updates.
+- [ ] Profile representative fleet sizes and viewport changes against a running backend and telemetry load.
+- [x] Show a friendly WebGL2/map-style error without taking down vehicle, alert, or dashboard routes.
 
 ### Completion gate
 
-- Panning and zooming changes server subscriptions, stale viewport data is ignored, clusters and vehicles do not overlap, and map/chart updates remain smooth without React rendering on every telemetry event.
+- [ ] Panning and zooming changes server subscriptions, stale viewport data is ignored, clusters and vehicles do not overlap, and map/chart updates remain smooth without React rendering on every telemetry event. Verify runtime behavior and representative fleet performance with the backend and telemetry load.
 
 ## Phase 5: Dashboard editor and complete widget experiences
 

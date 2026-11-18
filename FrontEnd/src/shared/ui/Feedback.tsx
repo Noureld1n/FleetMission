@@ -63,19 +63,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export function ConnectionBadge({
   status,
 }: {
-  status: 'live' | 'reconnecting' | 'stale' | 'standby'
+  status: 'live' | 'reconnecting' | 'stale' | 'standby' | 'connecting' | 'authenticating' | 'closed'
 }) {
   const labels = {
     live: 'Live',
     reconnecting: 'Reconnecting',
     stale: 'Data may be stale',
     standby: 'Live links coming soon',
+    connecting: 'Connecting',
+    authenticating: 'Authenticating',
+    closed: 'Offline',
   }
   const colors = {
     live: 'bg-emerald-400',
     reconnecting: 'bg-amber-300',
     stale: 'bg-amber-500',
     standby: 'bg-muted-foreground/70',
+    connecting: 'bg-sky-300',
+    authenticating: 'bg-sky-300',
+    closed: 'bg-muted-foreground/70',
   }
   return (
     <div

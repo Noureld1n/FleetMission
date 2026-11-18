@@ -1,4 +1,5 @@
 export const queryKeys = {
+  alerts: (filters: object = {}) => ['alerts', filters] as const,
   dashboards: () => ['dashboards'] as const,
   dashboard: (id: string) => ['dashboard', id] as const,
   vehicles: (filters: object) => ['vehicles', filters] as const,

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { queryClient } from '@/app/queryClient'
 import { useAuthStore } from '@/features/auth/store/authStore'
+import { useRealtimeStore } from '@/features/realtime/store/realtimeStore'
 import { ConnectionBadge } from '@/shared/ui/Feedback'
 
 const navigation = [
@@ -40,6 +41,22 @@ export function AppShell() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const clearSession = useAuthStore((state) => state.clearSession)
+  const eventStatus = useRealtimeStore((state) => state.eventStatus)
+  const mapStatus = useRealtimeStore((state) => state.mapStatus)
+  const connectionStatus =
+    eventStatus === 'stale' || mapStatus === 'stale'
+      ? 'stale'
+      : eventStatus === 'live' && mapStatus === 'live'
+        ? 'live'
+        : eventStatus === 'reconnecting' || mapStatus === 'reconnecting'
+          ? 'reconnecting'
+          : eventStatus === 'authenticating' || mapStatus === 'authenticating'
+            ? 'authenticating'
+            : eventStatus === 'connecting' || mapStatus === 'connecting'
+              ? 'connecting'
+              : eventStatus === 'closed' && mapStatus === 'closed'
+                ? 'closed'
+                : 'standby'
 
   function logout() {
     clearSession()
@@ -110,9 +127,9 @@ export function AppShell() {
         <nav className="mt-3 grid gap-1">{navLinks}</nav>
 
         <div className="mt-auto rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-3.5">
-          <ConnectionBadge status="standby" />
+          <ConnectionBadge status={connectionStatus} />
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Realtime connections will start with the live operations features.
+            Events: {eventStatus} <span className="text-border">·</span> Map: {mapStatus}
           </p>
         </div>
       </aside>

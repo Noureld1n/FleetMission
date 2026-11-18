@@ -1,16 +1,8 @@
 import { Link, useParams } from 'react-router'
 import { Activity, Bell, LayoutDashboard, Map, UsersRound } from 'lucide-react'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { useDashboard } from '@/features/dashboards/hooks/useDashboards'
 import { useFleetMetrics } from '@/features/fleet/hooks/useFleetData'
+import { StreamingFleetChart } from '@/features/metrics/components/StreamingFleetChart'
 import { ApiError } from '@/shared/api/http'
 import { EmptyState, ErrorState, PageSkeleton } from '@/shared/ui/Feedback'
 import type { DashboardWidget } from '@/shared/types/contracts'
@@ -76,10 +68,6 @@ function DashboardWidget({ widget }: { widget: DashboardWidget }) {
 
 function DashboardMetricsChart() {
   const metrics = useFleetMetrics(range)
-  const points = (metrics.data?.points ?? []).map((point) => ({
-    ...point,
-    time: new Date(point.bucket).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  }))
   if (metrics.isPending)
     return (
       <div className="grid min-h-48 place-items-center text-xs text-muted-foreground">
@@ -92,45 +80,7 @@ function DashboardMetricsChart() {
         Fleet history could not be loaded.
       </div>
     )
-  if (points.length === 0)
-    return (
-      <div className="grid min-h-48 place-items-center text-center text-xs text-muted-foreground">
-        No aggregated fleet metrics in the last 24 hours.
-      </div>
-    )
-  return (
-    <div className="mt-4 h-48" role="img" aria-label="Fleet average battery history">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points}>
-          <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="time" tick={{ fill: 'var(--color-muted-foreground)', fontSize: 10 }} />
-          <YAxis
-            domain={[0, 100]}
-            unit="%"
-            tick={{ fill: 'var(--color-muted-foreground)', fontSize: 10 }}
-            width={42}
-          />
-          <Tooltip
-            contentStyle={{
-              background: 'var(--color-card)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 12,
-              fontSize: 12,
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="batteryAverage"
-            name="Average battery"
-            stroke="var(--color-primary)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  )
+  return <StreamingFleetChart history={metrics.data.points} />
 }
 
 export function DashboardDetailPage() {

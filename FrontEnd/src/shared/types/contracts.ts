@@ -223,11 +223,11 @@ export const MapClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('viewport'), viewport: MapViewportSchema }),
 ])
 const nullableBase = {
-  code: z.string().nullable(),
-  message: z.string().nullable(),
-  viewportVersion: z.number().int().nonnegative().nullable(),
-  vehicles: z.array(TelemetryVehicleSchema).nullable(),
-  clusters: z.record(z.string(), z.number().int().nonnegative()).nullable(),
+  code: z.string().nullable().optional(),
+  message: z.string().nullable().optional(),
+  viewportVersion: z.number().int().nonnegative().nullable().optional(),
+  vehicles: z.array(TelemetryVehicleSchema).nullable().optional(),
+  clusters: z.record(z.string(), z.number().int().nonnegative()).nullable().optional(),
 }
 export const MapServerMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready'), ...nullableBase }),

@@ -8,6 +8,7 @@ import { LoginPage } from '@/features/auth/components/LoginPage'
 import { DashboardListPage } from '@/features/dashboards/components/DashboardListPage'
 import { DistrictsPage } from '@/features/fleet/components/DistrictsPage'
 import { VehicleListPage } from '@/features/fleet/components/VehicleListPage'
+import { RealtimeSession } from '@/features/realtime/RealtimeSession'
 import { PageSkeleton } from '@/shared/ui/Feedback'
 
 const MapRoute = lazy(() => import('@/features/map/MapRoute'))
@@ -44,45 +45,47 @@ export function AppRouter() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<RequireAuth />}>
-          <Route element={<AppShell />}>
-            <Route index element={<Navigate to="/dashboards" replace />} />
-            <Route path="dashboards" element={<DashboardListPage />} />
-            <Route
-              path="dashboards/:id"
-              element={
-                <Suspense fallback={<PageSkeleton rows={2} />}>
-                  <DashboardDetailPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="map"
-              element={
-                <Suspense fallback={<PageSkeleton />}>
-                  <MapRoute />
-                </Suspense>
-              }
-            />
-            <Route path="vehicles" element={<VehicleListPage />} />
-            <Route path="districts" element={<DistrictsPage />} />
-            <Route
-              path="vehicles/:id"
-              element={
-                <Suspense fallback={<PageSkeleton rows={2} />}>
-                  <VehicleDetailRoute />
-                </Suspense>
-              }
-            />
-            <Route
-              path="alerts"
-              element={
-                <PhasePage
-                  eyebrow="Signal and response"
-                  title="Alert center"
-                  description="Review fleet alerts and take operator actions when your role allows it."
-                />
-              }
-            />
+          <Route element={<RealtimeSession />}>
+            <Route element={<AppShell />}>
+              <Route index element={<Navigate to="/dashboards" replace />} />
+              <Route path="dashboards" element={<DashboardListPage />} />
+              <Route
+                path="dashboards/:id"
+                element={
+                  <Suspense fallback={<PageSkeleton rows={2} />}>
+                    <DashboardDetailPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="map"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <MapRoute />
+                  </Suspense>
+                }
+              />
+              <Route path="vehicles" element={<VehicleListPage />} />
+              <Route path="districts" element={<DistrictsPage />} />
+              <Route
+                path="vehicles/:id"
+                element={
+                  <Suspense fallback={<PageSkeleton rows={2} />}>
+                    <VehicleDetailRoute />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="alerts"
+                element={
+                  <PhasePage
+                    eyebrow="Signal and response"
+                    title="Alert center"
+                    description="Review fleet alerts and take operator actions when your role allows it."
+                  />
+                }
+              />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<NotFoundPage />} />
