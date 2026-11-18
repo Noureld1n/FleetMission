@@ -36,8 +36,8 @@ This plan turns every requirement in `Backend Sheet.md` into an ordered implemen
 
 ### Work
 
-- [ ] Review the current SQL draft against `Data Model.md` and this plan. Resolve provisional vehicle/alert kinds, retention windows, chunk interval, and any ownership/grant details before treating the draft as authoritative.
-- [ ] Place migrations in `src/main/resources/db/migration` and split them into ordered Flyway migrations:
+- [x] Review the current SQL draft against `Data Model.md` and this plan. The initial migrations keep the draft's concrete kind lists and 1-day/14-day/365-day retention values as documented starting choices; district-wide alert deduplication remains open. The exact TimescaleDB refresh behavior with forced source-table RLS remains a verification gate.
+- [x] Place migrations in `src/main/resources/db/migration` and split them into ordered Flyway migrations:
   1. Extensions, roles, schemas, and tenant-setting convention.
   2. Tenants, users, API keys, and narrowly scoped login/API-key lookup functions.
   3. Districts and vehicles.
@@ -46,8 +46,8 @@ This plan turns every requirement in `Backend Sheet.md` into an ordered implemen
   6. Alerts and indexes.
   7. Dashboards and dashboard widgets.
   8. Demo seed data for two tenants.
-- [ ] Use PostgreSQL extensions required by the data model: TimescaleDB, PostGIS, `citext`, and UUID generation support.
-- [ ] Create separate `app_owner`, `app_runtime`, and `app_lookup` roles. The running backend uses `app_runtime`; migrations use `app_owner`; lookup functions are narrowly exposed to runtime.
+- [x] Use PostgreSQL extensions required by the data model: TimescaleDB, PostGIS, `citext`, and UUID generation support. Provision extensions and cluster roles through the administrator-run `DataBase/bootstrap.sql` before Flyway.
+- [x] Create separate `app_owner`, `app_runtime`, and `app_lookup` roles. The running backend uses `app_runtime`; migrations use `app_owner`; lookup functions are narrowly exposed to runtime.
 - [ ] Use UUID primary keys, UTC `timestamptz`, snake_case/plural naming, text plus CHECK constraints for enumerations, and `NOT NULL` except where nullable behavior is documented.
 - [ ] Ensure every tenant-owned table has `tenant_id`, a same-tenant composite uniqueness target where required, and composite foreign keys for tenant-owned parent references.
 - [ ] Implement identity data: global case-insensitive unique user email, password hashes only, user role and disabled timestamp, API-key prefix/hash, and revocation/last-use timestamps.
@@ -57,17 +57,17 @@ This plan turns every requirement in `Backend Sheet.md` into an ordered implemen
 - [ ] Implement `telemetry_1m` and `telemetry_fleet_1m` continuous aggregates with the required battery/speed/count values, real-time reads, and longer retention than raw telemetry.
 - [ ] Implement alerts with optional vehicle and district references (at least one required), kind/severity/state constraints, timestamps, JSON details, list index, and active per-vehicle/kind deduplication index. Decide and document whether district-wide deduplication is needed for outage behavior.
 - [ ] Implement dashboards and widgets with tenant-scoped ownership, sharing flag, widget configuration and grid coordinates, and cascading widget deletion. Leave overlap validation to the layout library.
-- [ ] Apply RLS enabled and forced policies to every tenant-owned table. Policy `USING` and `WITH CHECK` must compare `tenant_id` with the transaction-local `app.tenant_id` setting and fail closed when it is absent.
-- [ ] Ensure the runtime role is not table owner, has no `BYPASSRLS`, and receives only required grants. Ensure lookup role/function ownership is constrained and search paths are fixed.
-- [ ] Implement exact-email login lookup and API-key-prefix lookup functions that return only required fields. Do not use general tenant-filtered access before tenant identity is established.
-- [ ] Deny runtime direct access to aggregates. Expose them only through security-barrier tenant-filtered views using the current tenant setting.
-- [ ] Add a schema coverage check that detects any tenant-owned table without enabled/forced RLS and a tenant policy.
+- [x] Apply RLS enabled and forced policies to every tenant-owned table. Policy `USING` and `WITH CHECK` compare `tenant_id` with the transaction-local `app.tenant_id` setting and fail closed when it is absent.
+- [x] Ensure the runtime role is not table owner, has no `BYPASSRLS`, and receives only required grants. Lookup function ownership and search paths are constrained.
+- [x] Implement exact-email login lookup and API-key-prefix lookup functions that return only required fields. Do not use general tenant-filtered access before tenant identity is established.
+- [x] Deny runtime direct access to aggregates. Expose them only through security-barrier tenant-filtered views using the current tenant setting.
+- [x] Add a schema coverage check that detects any tenant-owned table without enabled/forced RLS and a tenant policy.
 
 ### Completion gate
 
-- [ ] Flyway can apply the migration sequence to the intended TimescaleDB/PostGIS image.
-- [ ] Two seeded tenants and one user/API key per tenant exist for local development.
-- [ ] Schema constraints, RLS, role grants, lookup functions, aggregates, and tenant views match the model before feature code depends on them.
+- [ ] Flyway can apply the migration sequence to the intended TimescaleDB/PostGIS image. It has not been run against a clean database yet.
+- [ ] Two seeded tenants exist. Demo users/API keys are deferred until the credential creation flow exists, so no reusable hashes or credentials are embedded in SQL.
+- [ ] Schema constraints, RLS, role grants, lookup functions, aggregates, and tenant views match the model before feature code depends on them; scheduled aggregate refresh under forced telemetry RLS still needs verification against the target image.
 
 ## Phase 2: Application structure, configuration, errors, and observability base
 
