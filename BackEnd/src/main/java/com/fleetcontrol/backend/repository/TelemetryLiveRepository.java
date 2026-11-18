@@ -13,6 +13,12 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import org.springframework.data.redis.connection.RedisGeoCommands;
+import org.springframework.data.geo.Circle;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.Metrics;
+import org.springframework.data.geo.Point;
+import reactor.core.publisher.Flux;
 
 /** Atomic Redis live-state update. All keys and channels carry the tenant ID. */
 @Repository
@@ -125,6 +131,44 @@ public class TelemetryLiveRepository {
                 .map(Long::parseLong).defaultIfEmpty(latest.ts().toEpochMilli())
                 .map(lastSeen->lastSeen<=cutoff.toEpochMilli());
     }
+    /** Reads tenant geo members in the world-sized circle, then their current live hashes. */
+    public Flux<TelemetryVehicle> snapshot(TenantIdentity identity) {
+        Circle world = new Circle(new Point(0, 0), new Distance(20_100, Metrics.KILOMETERS));
+        return redis.opsForGeo().radius(geoKey(identity.tenantId()), world,
+                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeCoordinates())
+                .flatMap(result -> {
+                    try { return readLiveState(identity.tenantId(), UUID.fromString(result.getContent().getName())); }
+                    catch (IllegalArgumentException invalid) { return Mono.empty(); }
+                });
+    }
+    public Mono<Map<String, Long>> clusterCounts(TenantIdentity identity, Set<String> tiles, int viewportZoom) {
+        return redis.<String, String>opsForHash().entries(tileCountsKey(identity.tenantId(), zoom))
+                .<Map.Entry<String,Long>>handle((entry, sink) -> {
+                    String[] coordinates=entry.getKey().split(":",2);
+                    int x=Integer.parseInt(coordinates[0]), y=Integer.parseInt(coordinates[1]);
+                    int shift=Math.max(0,zoom-viewportZoom);
+                    String parent=(x>>shift)+":"+(y>>shift);
+                    if(tiles.contains(parent))sink.next(Map.entry(parent,Long.parseLong(entry.getValue())));
+                })
+                .collect(HashMap<String,Long>::new,(counts,entry)->counts.merge(entry.getKey(),entry.getValue(),Long::sum));
+    }
+    public static String tileFor(double lat, double lon, int zoom) {
+        int n = 1 << zoom;
+        int x = Math.min(n - 1, Math.max(0, (int)Math.floor((lon + 180) / 360 * n)));
+        double safe = Math.max(-85.05112878, Math.min(85.05112878, lat));
+        double rad = Math.toRadians(safe);
+        int y = Math.min(n - 1, Math.max(0, (int)Math.floor((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n)));
+        return x + ":" + y;
+    }
+    private Mono<TelemetryVehicle> readLiveState(UUID tenant, UUID vehicle) {
+        return redis.<String, String>opsForHash().entries(vehicleKey(tenant, vehicle)).collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .filter(values -> values.containsKey("lat") && values.containsKey("lon"))
+                .map(values -> new TelemetryVehicle(vehicle, OffsetDateTime.parse(values.get("ts")).toInstant(),
+                        Long.parseLong(values.getOrDefault("seq", "0")), Double.parseDouble(values.get("lat")),
+                        Double.parseDouble(values.get("lon")), parseFloat(values.get("heading")), parseFloat(values.get("speed")),
+                        Integer.parseInt(values.getOrDefault("battery", "0")), values.getOrDefault("status", "unknown")));
+    }
+    private static Float parseFloat(String value) { return value == null || value.isBlank() ? null : Float.valueOf(value); }
     private Mono<TelemetryVehicle> apply(TenantIdentity identity,TelemetryBatchRequest.TelemetryEvent e,String key,TelemetryVehicle previous) {
         String heading=e.headingDeg()==null?"":e.headingDeg().toString();
         String speed=e.speedKmh()==null?"":e.speedKmh().toString();

@@ -221,23 +221,23 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Implement `/ws/map` as a reactive WebSocket endpoint. First inbound message must be `auth` carrying JWT; enforce configured timeout and close unauthorized/late sockets; send `ready` after validation.
-- [ ] Define typed inbound/outbound message records for `auth`, `viewport`, `ready`, `snapshot`, `delta`, `clusters`, and `error`.
-- [ ] Require viewport messages to contain bounds, zoom, and `viewportVersion`. Echo that version on every snapshot/delta/cluster response so clients can discard stale viewport responses.
-- [ ] Implement slippy-map tile math at a selected fixed subscription zoom. Validate bounds and zoom; handle antimeridian/poles and tile-count limits safely.
-- [ ] Maintain an in-memory registry keyed by `(tenant, tile)` to local subscribers. Add/remove tile memberships on viewport changes and clean all memberships on disconnect/error.
-- [ ] For newly entered tiles, load snapshot IDs from tenant Redis geo index, then read latest-state hashes and send a snapshot. Avoid sending stale snapshots over newer deltas by merging client-visible updates by sequence number.
-- [ ] Use tile count hashes to send `clusters` instead of individual vehicles at low zoom; use individual vehicle states at high zoom.
-- [ ] Subscribe each backend instance to tenant-wide Redis updates initially. Map each update to its tile and dispatch only to local subscribers. Keep per-tile Redis channels as a later optimization only if load data justifies them.
-- [ ] Give each socket a bounded outbound buffer keyed by vehicle ID. Keep only newest position update per vehicle; count conflated/dropped updates. Preserve delivery behavior for non-position events such as status transitions if those must not be lost.
-- [ ] Flush each connection's coalesced updates at the configured fixed interval as batched `delta` messages. Ensure a slow consumer cannot grow memory without bound.
-- [ ] Implement Redis listener lifecycle management and Reactor Context propagation for tenant-bearing messages.
-- [ ] Add reconnect behavior on the client-facing protocol: after reconnect the client authenticates again and resends its viewport; server returns a fresh snapshot.
-- [ ] Add metrics for open sockets, tiles subscribed, snapshot duration, per-connection queue pressure, flush size, and conflated updates.
+  - [x] Implement `/ws/map` as a reactive WebSocket endpoint. First inbound message must be `auth` carrying JWT; enforce configured timeout and close unauthorized/late sockets; send `ready` after validation.
+  - [x] Define typed inbound/outbound message records for `auth`, `viewport`, `ready`, `snapshot`, `delta`, `clusters`, and `error`.
+  - [x] Require viewport messages to contain bounds, zoom, and `viewportVersion`. Echo that version on every snapshot/delta/cluster response so clients can discard stale viewport responses.
+  - [x] Implement slippy-map tile math at a selected fixed subscription zoom. Validate bounds and zoom; handle antimeridian/poles and tile-count limits safely.
+  - [x] Maintain an in-memory registry keyed by `(tenant, tile)` to local subscribers. Add/remove tile memberships on viewport changes and clean all memberships on disconnect/error.
+  - [x] For newly entered tiles, load snapshot IDs from tenant Redis geo index, then read latest-state hashes and send a snapshot. Merge newer queued client-visible updates by sequence number.
+  - [x] Use tile count hashes to send `clusters` instead of individual vehicles at low zoom; use individual vehicle states at high zoom.
+  - [x] Share a tenant-wide Redis updates subscription per backend instance while local sockets for that tenant are active. Map each update to its tile and dispatch only to local subscribers.
+  - [x] Give each socket a bounded outbound buffer keyed by vehicle ID. Keep only newest position update per vehicle; count conflated/dropped updates. Latest telemetry state includes status transitions.
+  - [x] Flush each connection's coalesced updates at the configured fixed interval as batched `delta` messages. Bound the per-vehicle pending map and outbound queue.
+  - [x] Manage Redis listener lifecycle with tenant socket reference counts; tenant identity comes from the verified JWT and is passed explicitly to the dispatcher.
+  - [x] Server reconnect behavior is stateless: every connection authenticates again, and a new viewport request produces a fresh snapshot. No frontend client exists in this repository.
+  - [x] Add metrics for open sockets, tiles subscribed, snapshot duration, queue size, flushes, conflated updates, and dropped updates.
 
 ### Completion gate
 
-- [ ] An authenticated client sees only its tenant's vehicles, receives fresh snapshots on viewport changes, gets deltas for subscribed tiles, ignores prior viewport versions, and remains memory-bounded when slow.
+  - [ ] An authenticated client sees only its tenant's vehicles, receives fresh snapshots on viewport changes, gets deltas for subscribed tiles, ignores prior viewport versions, and remains memory-bounded when slow. Runtime verification against Redis and a WebSocket client remains outstanding.
 
 ## Phase 9: Scenario commands, outage flow, and end-to-end demo path
 
