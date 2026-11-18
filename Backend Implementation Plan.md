@@ -135,18 +135,18 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Define model enums/value objects from the schema constraints, including status, role, alert state/severity, and selected vehicle/alert kinds.
-- [ ] Implement immutable request/response DTOs with validation annotations. Never expose R2DBC entities, password hashes, raw API-key hashes, or internal fields.
-- [ ] Implement repository SQL with tenant context for vehicles, districts, alerts, dashboards, widgets, and aggregate reads. Use `DatabaseClient`/SQL for PostGIS expressions and aggregate views where needed.
-- [ ] Implement mappers as pure functions only.
-- [ ] Implement `GET /api/me` for the authenticated user, role and tenant.
-- [ ] Implement vehicle reads: `GET /api/vehicles` with status/district filters and `GET /api/vehicles/{id}` with latest state from Redis, with a defined behavior if cache is absent.
-- [ ] Implement district reads and `POST /api/districts`; return boundaries through SQL `ST_AsGeoJSON` and accept validated GeoJSON/coordinates without exposing PostGIS types through R2DBC.
-- [ ] Implement alerts list `GET /api/alerts` with status/severity filters, plus `POST /api/alerts/{id}/acknowledge` and `/resolve` with state transition rules.
-- [ ] Implement dashboard visibility rules: an owner sees their dashboards; tenant members can see shared dashboards; only owner/operator can edit as defined by the sheet.
-- [ ] Implement `GET /api/dashboards`, `GET /api/dashboards/{id}`, `POST /api/dashboards`, `PUT /api/dashboards/{id}` replacing name/share/layout, and `DELETE /api/dashboards/{id}` with widget cascade.
-- [ ] Use cursor and `limit` for list routes; timestamps are ISO 8601 UTC; IDs are UUIDs; request bodies are JSON.
-- [ ] Use service methods for business rules and orchestration. Controllers only route, validate, read security context and call one service method.
+- [x] Define model enums/value objects from the schema constraints, including status, role, alert state/severity, and selected vehicle/alert kinds.
+- [x] Implement immutable request/response DTOs with validation annotations. Never expose R2DBC entities, password hashes, raw API-key hashes, or internal fields.
+- [x] Implement repository SQL with tenant context for vehicles, districts, alerts, dashboards, widgets, and aggregate reads. Use `DatabaseClient`/SQL for PostGIS expressions and aggregate views where needed.
+- [x] Implement mappers as pure functions only.
+- [x] Implement `GET /api/me` for the authenticated user, role and tenant.
+- [x] Implement vehicle reads: `GET /api/vehicles` with status/district filters and `GET /api/vehicles/{id}` with latest state from Redis, with a defined behavior if cache is absent (latest state is `null`).
+- [x] Implement district reads and `POST /api/districts`; return boundaries through SQL `ST_AsGeoJSON` and accept validated GeoJSON/coordinates without exposing PostGIS types through R2DBC.
+- [x] Implement alerts list `GET /api/alerts` with status/severity filters, plus `POST /api/alerts/{id}/acknowledge` and `/resolve` with state transition rules.
+- [x] Implement dashboard visibility rules: an owner sees their dashboards; tenant members can see shared dashboards; only the owner can edit, with the existing operator route authorization.
+- [x] Implement `GET /api/dashboards`, `GET /api/dashboards/{id}`, `POST /api/dashboards`, `PUT /api/dashboards/{id}` replacing name/share/layout, and `DELETE /api/dashboards/{id}` with widget cascade.
+- [x] Use cursor and `limit` for list routes; timestamps are ISO 8601 UTC; IDs are UUIDs; request bodies are JSON.
+- [x] Use service methods for business rules and orchestration. Controllers only route, validate, read security context and call one service method.
 
 ### Completion gate
 
