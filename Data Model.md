@@ -171,6 +171,16 @@ Alerts are ordinary rows with a small state machine (open, acknowledged, resolve
 
 **Indexes.** `(tenant_id, status, opened_at DESC)` serves the alert list and open-alert counter. `(tenant_id, updated_at, id)` serves ordered tenant-scoped SSE replay. A partial unique index on `(tenant_id, vehicle_id, kind)` where `status <> 'resolved'` stops the same condition from opening duplicate alerts for one vehicle while one is already active.
 
+Outage scenarios also deduplicate active district-only alerts with a partial unique index on `(tenant_id, district_id, kind)` when `vehicle_id IS NULL` and the alert is not resolved. This leaves per-vehicle outage alerts independent and addressable.
+
+## Simulator scenario commands
+
+`scenario_commands` stores tenant-owned work for the simulator. The backend creates an `outage` command in the same database transaction as the district/vehicle alerts and vehicle status changes. The simulator can only access commands with its tenant API key; it never connects directly to PostgreSQL or Redis.
+
+Each command stores `tenant_id`, `district_id`, `command_type`, JSON `payload`, `state` (`pending`, `acknowledged`, or `expired`), `created_at`, `expires_at`, `lease_until`, `attempt_count`, and optional `acknowledged_at`. Polling atomically leases up to the requested limit for 30 seconds using `FOR UPDATE SKIP LOCKED`. An unacknowledged command becomes available again after its lease expires and is marked expired when its ten-minute lifetime ends. The simulator acknowledges by command ID through the API; repeated acknowledgements of an already acknowledged command succeed idempotently.
+
+The table has a tenant/pending index, composite tenant/district foreign key, forced tenant row-level security, and runtime-role grants. Migration `V11__scenario_commands_and_district_alert_deduplication.sql` creates the table and district-alert deduplication index.
+
 ## Dashboards and widgets
 
 A dashboard is owned by one user and can be shared read-only with the rest of the tenant. Each widget stores its own grid position, which is what react-grid-layout saves, so a layout is just the set of widget rows.
@@ -311,5 +321,5 @@ Each tenant-owned table's migration also creates its policy and grants, so no ta
 | Vehicle `kind` values | Left open until the demo's vehicle type is chosen | Before the `vehicles` migration |
 | Telemetry foreign key | Kept, for integrity | If the k6 test shows write cost |
 | Raw retention window and chunk size | Days of retention, one-day chunks | After measuring storage and query cost |
-| District-wide alert deduplication | Only per-vehicle alerts are deduplicated; a second partial index would cover district alerts | When the outage scenario is built |
+| District-wide alert deduplication | Active district-only `district_outage` alerts are deduplicated by tenant, district, and kind. Vehicle outage alerts remain separate. | Implemented with the outage scenario |
 | Compression | Off, because compressed chunks do not support row-level security | Only if storage forces it, with the fallback described under Telemetry |

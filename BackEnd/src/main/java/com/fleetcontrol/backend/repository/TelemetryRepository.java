@@ -84,4 +84,12 @@ public class TelemetryRepository {
         for(int i=0;i<vehicleIds.size();i++) q=q.bind("vehicle"+i,vehicleIds.get(i));
         return q.fetch().rowsUpdated().then();
     }
+    public Mono<Void> markVehiclesFault(UUID tenantId,List<UUID> vehicleIds) {
+        if(vehicleIds.isEmpty()) return Mono.empty();
+        StringJoiner values=new StringJoiner(","); for(int i=0;i<vehicleIds.size();i++) values.add("(:vehicle"+i+")");
+        var q=db.sql("UPDATE public.vehicles SET status='fault' WHERE tenant_id=:tenant AND id IN (SELECT id FROM (VALUES "+values+") AS requested(id))")
+                .bind("tenant",tenantId);
+        for(int i=0;i<vehicleIds.size();i++) q=q.bind("vehicle"+i,vehicleIds.get(i));
+        return q.fetch().rowsUpdated().then();
+    }
 }

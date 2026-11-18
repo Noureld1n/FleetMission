@@ -97,6 +97,14 @@ public class DomainRepository {
                 "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
                 .bind("vehicle",vehicle).bind("kind",kind).map((r,m)->alert(r)).one();
     }
+    public Mono<AlertResponse> openOrUpdateDistrictAlert(UUID tenant,UUID district,String kind,String severity,String detailJson) {
+        return db.sql("INSERT INTO public.alerts(tenant_id,district_id,kind,severity,detail) VALUES(:tenant,:district,:kind,:severity,CAST(:detail AS jsonb)) "+
+                "ON CONFLICT(tenant_id,district_id,kind) WHERE district_id IS NOT NULL AND vehicle_id IS NULL AND status<>'resolved' "+
+                "DO UPDATE SET severity=EXCLUDED.severity,detail=EXCLUDED.detail,updated_at=now() "+
+                "RETURNING id,vehicle_id,district_id,kind,severity,status,opened_at,acknowledged_at,resolved_at,updated_at,detail::text detail")
+                .bind("tenant",tenant).bind("district",district).bind("kind",kind).bind("severity",severity).bind("detail",detailJson)
+                .map((r,m)->alert(r)).one();
+    }
 
     public Flux<DashboardResponse> dashboards(UUID user,UUID cursor,int count) {
         String sql="SELECT id,owner_id,name,is_shared,created_at,updated_at FROM public.dashboards WHERE (owner_id=:user OR is_shared=true) AND (:cursor IS NULL OR id>:cursor) ORDER BY id LIMIT :count";

@@ -94,6 +94,25 @@ public class TelemetryLiveRepository {
             redis.call('HSET',state,'status','offline')
             return seq
             """,Long.class);
+    private static final DefaultRedisScript<Long> MARK_FAULT_SCRIPT=new DefaultRedisScript<>("""
+            local state=KEYS[1]; local geo=KEYS[2]; local counts=KEYS[3]
+            local vehicle=ARGV[1]; local zoom=tonumber(ARGV[2])
+            if redis.call('EXISTS',state)==0 then
+              redis.call('HSET',state,'seq',ARGV[3],'lat',ARGV[4],'lon',ARGV[5],'battery',ARGV[8],
+                'status',ARGV[11],'ts',ARGV[6],'ts_epoch_ms',ARGV[7])
+              if ARGV[9]~='' then redis.call('HSET',state,'heading',ARGV[9]) end
+              if ARGV[10]~='' then redis.call('HSET',state,'speed',ARGV[10]) end
+              local n=2^zoom; local safe=math.max(-85.05112878,math.min(85.05112878,tonumber(ARGV[4])))
+              local rad=safe*math.pi/180; local x=math.floor((tonumber(ARGV[5])+180)/360*n)
+              local y=math.floor((1-math.log(math.tan(rad)+1/math.cos(rad))/math.pi)/2*n)
+              redis.call('GEOADD',geo,ARGV[5],ARGV[4],vehicle)
+              redis.call('HINCRBY',counts,math.max(0,math.min(n-1,x))..':'..math.max(0,math.min(n-1,y)),1)
+            end
+            if redis.call('HGET',state,'status')=='fault' then return 0 end
+            local seq=redis.call('HINCRBY',state,'seq',1)
+            redis.call('HSET',state,'status','fault')
+            return seq
+            """,Long.class);
 
     private final ReactiveStringRedisTemplate redis;
     private final TelemetryRepository telemetry;
@@ -130,6 +149,19 @@ public class TelemetryLiveRepository {
         return redis.<String,String>opsForHash().get(key,"ts_epoch_ms")
                 .map(Long::parseLong).defaultIfEmpty(latest.ts().toEpochMilli())
                 .map(lastSeen->lastSeen<=cutoff.toEpochMilli());
+    }
+    public Mono<TelemetryVehicle> markFault(TenantIdentity identity,TelemetryVehicle latest) {
+        String key=vehicleKey(identity.tenantId(),latest.vehicleId());
+        List<String> args=List.of(latest.vehicleId().toString(),Integer.toString(zoom),Long.toString(latest.seq()),
+                Double.toString(latest.lat()),Double.toString(latest.lon()),latest.ts().toString(),
+                Long.toString(latest.ts().toEpochMilli()),Integer.toString(latest.batteryPct()),string(latest.headingDeg()),
+                string(latest.speedKmh()),latest.status());
+        return redis.execute(MARK_FAULT_SCRIPT,List.of(key,geoKey(identity.tenantId()),tileCountsKey(identity.tenantId(),zoom)),args.toArray())
+                .next().defaultIfEmpty(0L).flatMap(changed->{
+                    if(changed==0L)return Mono.empty();
+                    return readLiveState(identity.tenantId(),latest.vehicleId())
+                            .flatMap(state->publish(identity,state).thenReturn(state));
+                });
     }
     /** Reads tenant geo members in the world-sized circle, then their current live hashes. */
     public Flux<TelemetryVehicle> snapshot(TenantIdentity identity) {

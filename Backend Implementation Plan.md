@@ -243,16 +243,16 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Implement `POST /api/scenarios/outage` for operators. Validate district and tenant ownership.
-- [ ] Persist a tenant-scoped scenario command for simulator pickup so the simulator continues to communicate only through the public API.
-- [ ] Implement `GET /ingest/v1/commands` API-key-authenticated polling for pending simulator commands, with tenant scoping, acknowledgement/expiry rules and retry behavior.
-- [ ] On outage, identify affected vehicles using district geometry/spatial queries and/or recent telemetry, open district/vehicle alerts as designed, and publish Redis updates.
-- [ ] Update vehicle/status/latest state and relevant chart metrics as appropriate; ensure the UI can show the outage cascading to map, alert list, status tiles and charts.
-- [ ] Add an end-to-end flow: simulator batch in, telemetry stored, vehicle update delivered to WebSocket, alert emitted to SSE, and outage command delivered to simulator.
+- [x] Implement `POST /api/scenarios/outage` for operators. Validate district and tenant ownership.
+- [x] Persist a tenant-scoped scenario command for simulator pickup so the simulator continues to communicate only through the public API.
+- [x] Implement `GET /ingest/v1/commands` API-key-authenticated polling for pending simulator commands, with tenant scoping, acknowledgement/expiry rules and retry behavior. Added API-key-authenticated idempotent `POST /ingest/v1/commands/{id}/acknowledge`.
+- [x] On outage, identify active vehicles with recent telemetry inside the tenant-owned district geometry, open/update district and vehicle alerts, and publish Redis updates.
+- [x] Update vehicle status and Redis latest state so the UI can show map, alert-list, and status-tile changes. Chart history remains based on actual telemetry; the scenario does not manufacture samples.
+- [x] Connect existing telemetry ingestion, persistence, WebSocket, SSE, and new command-polling flows. Live end-to-end execution remains for runtime verification.
 
 ### Completion gate
 
-- [ ] Operator-triggered outage produces a visible, tenant-scoped end-to-end event chain without direct simulator/database coupling.
+- [ ] Operator-triggered outage produces a visible, tenant-scoped end-to-end event chain without direct simulator/database coupling. Runtime verification with PostgreSQL/PostGIS, Redis, and a simulator client remains outstanding.
 
 ## Phase 10: Test coverage and reactive correctness
 

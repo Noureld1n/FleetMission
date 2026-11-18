@@ -168,9 +168,12 @@ This is the proposed API surface. Roles are cumulative: an operator can do every
 | `POST /api/scenarios/outage` | Operator | Trigger the demo outage in a district |
 | `POST /ingest/v1/telemetry` | API key | Submit a batch of telemetry; answers `202 Accepted` |
 | `GET /ingest/v1/commands` | API key | Simulator polls for scenario commands |
+| `POST /ingest/v1/commands/{id}/acknowledge` | API key | Acknowledge a delivered command |
 | `GET /actuator/health`, `/actuator/prometheus` | Internal | Health checks and metrics scraping |
 
-The outage button needs a way to reach the simulator without breaking the rule that the simulator only talks to the public API. The proposed route: the scenario endpoint stores a command for the tenant, and the simulator picks it up on its next poll of the commands endpoint. This is the one open question in this section.
+The outage button stores a tenant-scoped command for pickup on the simulator's next poll. The request body contains a `districtId` and optional `durationSeconds` (10–3600; defaults to 120). The command payload contains `action: "outage"`, district ID, and duration. Polling leases commands for 30 seconds; unacknowledged commands are retried after lease expiry and expire after ten minutes. The simulator acknowledges with the command ID. Poll and acknowledgement endpoints require the tenant API key, and the simulator communicates only through these public HTTP routes.
+
+Triggering an outage validates the district in the caller's tenant, selects active vehicles with telemetry from the last five minutes whose latest position lies in the district polygon, stores the command and opens/updates district and per-vehicle `district_outage` alerts in one tenant transaction, and sets affected vehicle statuses to `fault`. After commit, the backend publishes alert events to the tenant SSE channel and fault states to the tenant live-map channel. Vehicle history and chart aggregates continue to represent actual telemetry; the scenario does not fabricate telemetry samples.
 
 ### SSE stream
 
