@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const uuidSchema = z.string().uuid()
+const uuidSchema = z.guid();
 const dateTimeSchema = z.string().refine((value) => Number.isFinite(Date.parse(value)), {
   message: 'Expected an ISO-8601 date-time',
 })

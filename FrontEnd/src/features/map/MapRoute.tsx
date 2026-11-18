@@ -9,6 +9,7 @@ import { useDistricts } from '@/features/fleet/hooks/useFleetData'
 import { useMapSocket } from '@/features/realtime/mapSocketContext'
 import { useRealtimeStore } from '@/features/realtime/store/realtimeStore'
 import { useMapStore } from '@/features/map/store/mapStore'
+import { resolveMissingBasemapImages } from '@/features/map/lib/basemapImages'
 import type { DistrictResponse, TelemetryVehicle, VehicleStatus } from '@/shared/types/contracts'
 
 maplibregl.setWorkerUrl(mapWorkerUrl)
@@ -215,6 +216,7 @@ export default function MapRoute() {
         center: [31.2357, 30.0444],
         zoom: 5.5,
       })
+      resolveMissingBasemapImages(map)
     } catch {
       window.setTimeout(
         () =>
@@ -415,7 +417,11 @@ export default function MapRoute() {
       )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="relative min-h-[480px] overflow-hidden rounded-2xl border border-border bg-slate-950 sm:min-h-[620px]">
-          <div ref={container} className="absolute inset-0" aria-label="Live fleet map" />
+          {/* MapLibre adds `.maplibregl-map { position: relative }` to its container. That unlayered
+              rule beats Tailwind's layered `absolute`, so position a wrapper instead. */}
+          <div className="absolute inset-0">
+            <div ref={container} className="h-full w-full" aria-label="Live fleet map" />
+          </div>
           {mapError && (
             <div className="absolute inset-0 z-10 grid place-items-center bg-background/95 p-7 text-center">
               <div className="max-w-md">

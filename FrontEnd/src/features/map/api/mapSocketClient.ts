@@ -21,6 +21,29 @@ function socketUrl() {
   return `${protocol}//${window.location.host}/ws/map`
 }
 
+type RawViewport = Omit<MapViewport, 'viewportVersion'>
+
+/**
+ * MapLibre bounds are unwrapped: longitudes exceed Â±180 when zoomed out or panned across the
+ * antimeridian, which the viewport schema (and backend) reject. Wrap into [-180, 180]; a
+ * west > east result is a valid antimeridian-crossing span for the backend tile math.
+ */
+function normalizeViewport(viewport: RawViewport): RawViewport {
+  const wholeWorld = viewport.east - viewport.west >= 360
+  const wrap = (lng: number) => {
+    const wrapped = ((((lng + 180) % 360) + 360) % 360) - 180
+    return wrapped === -180 && lng > 0 ? 180 : wrapped
+  }
+  const clampLat = (lat: number) => Math.max(-90, Math.min(90, lat))
+  return {
+    west: wholeWorld ? -180 : wrap(viewport.west),
+    south: clampLat(viewport.south),
+    east: wholeWorld ? 180 : wrap(viewport.east),
+    north: clampLat(viewport.north),
+    zoom: viewport.zoom,
+  }
+}
+
 function unauthorized() {
   useAuthStore.getState().clearSession()
   window.dispatchEvent(new Event('fleet:unauthorized'))
@@ -50,7 +73,16 @@ export class MapSocketClient {
     window.clearTimeout(this.retryTimer)
     window.clearTimeout(this.viewportTimer)
     window.clearTimeout(this.authTimer)
-    this.socket?.close(1000, 'Session ended')
+    const socket = this.socket
+    if (socket?.readyState === WebSocket.CONNECTING) {
+      // Closing a CONNECTING socket logs a browser warning (common under React StrictMode's
+      // dev double-mount). Close it as soon as it opens instead.
+      socket.onmessage = null
+      socket.onerror = null
+      socket.onopen = () => socket.close(1000, 'Session ended')
+    } else {
+      socket?.close(1000, 'Session ended')
+    }
     this.socket = null
     useRealtimeStore.getState().setMapStatus('closed')
   }
@@ -59,7 +91,7 @@ export class MapSocketClient {
     window.clearTimeout(this.viewportTimer)
     this.viewportTimer = window.setTimeout(() => {
       const socket = this.socket
-      const versioned = useMapStore.getState().setViewport(viewport)
+      const versioned = useMapStore.getState().setViewport(normalizeViewport(viewport))
       if (!this.ready || !socket || socket.readyState !== WebSocket.OPEN) return
       const parsed = MapClientMessageSchema.safeParse({ type: 'viewport', viewport: versioned })
       if (parsed.success) socket.send(JSON.stringify(parsed.data))

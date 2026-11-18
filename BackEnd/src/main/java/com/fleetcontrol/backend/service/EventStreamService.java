@@ -105,10 +105,9 @@ public class EventStreamService {
         Instant now=clock.instant();
         OffsetDateTime from=now.minus(Duration.ofMinutes(2)).atOffset(ZoneOffset.UTC);
         OffsetDateTime to=now.atOffset(ZoneOffset.UTC);
-        return transactions.inTenantTransaction(()->repository.fleetHistory(from,to,3).last())
+        return transactions.inTenantTransaction(()->repository.fleetHistory(from,to,3).next()) // Changed .last() to .next()
                 .contextWrite(Context.of(TenantIdentity.class,identity))
                 .map(DomainMapper::toFleetMetricsPoint)
-                // Metric events deliberately omit an SSE ID: Last-Event-ID tracks alert changes only.
                 .map(point->ServerSentEvent.<Object>builder(point).event("fleet.metrics").build());
     }
 

@@ -8,6 +8,7 @@ import { MapPin } from 'lucide-react'
 import { useDistricts } from '@/features/fleet/hooks/useFleetData'
 import { useMapSocket } from '@/features/realtime/mapSocketContext'
 import { useMapStore } from '@/features/map/store/mapStore'
+import { resolveMissingBasemapImages } from '@/features/map/lib/basemapImages'
 import { queryKeys } from '@/shared/api/queryKeys'
 import type { DistrictResponse, TelemetryVehicle } from '@/shared/types/contracts'
 
@@ -75,6 +76,7 @@ export function DashboardMapWidget() {
     let map: maplibregl.Map
     try {
       map = new maplibregl.Map({ container: host.current, style: mapStyle, center: [31.2357, 30.0444], zoom: 5.5 })
+      resolveMissingBasemapImages(map)
     } catch {
       window.setTimeout(() => setMapError('The basemap could not be started.'), 0)
       return
