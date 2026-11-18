@@ -12,3 +12,7 @@ app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+management:
+  server:
+    address: ${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}
+

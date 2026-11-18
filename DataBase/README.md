@@ -11,6 +11,8 @@ Do not apply these migrations to a database where `V1__initial_schema.sql` was a
 
 The migrations seed two demo tenants, but intentionally do not contain reusable user passwords or API-key credentials. Add those through the application's credential creation flow when it exists.
 
+The backend accepts machine keys in the `X-API-Key` header using `prefix.secret`. Prefixes use 4–64 ASCII letters, digits, `_` or `-` and are the lookup value stored in `api_keys.key_prefix`; `api_keys.key_hash` stores lowercase SHA-256 hex of the high-entropy secret portion only. Generate secrets from at least 32 random bytes and display each secret only once when a future key-creation flow is added. User password hashes use BCrypt (work factor 12).
+
 ## Starting schema choices
 
 The first migration set keeps the draft's concrete demo values: vehicle kinds `drone`, `scooter`, and `ev_charger`; alert kinds `low_battery`, `vehicle_offline`, and `district_outage`; one-day telemetry chunks; 14-day raw retention; and 365-day aggregate retention. The retention and chunk values are starting values and should be revisited with measured workload data. Vehicle alert deduplication is enforced; district-wide deduplication remains open until outage behavior is implemented.

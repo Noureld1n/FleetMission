@@ -1,6 +1,8 @@
 spring:
   application:
     name: backend
+  main:
+    web-application-type: reactive
   r2dbc:
     url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5432/fleetmission}
     username: ${SPRING_R2DBC_USERNAME:app_runtime}
@@ -14,13 +16,53 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+    username: ${SPRING_DATA_REDIS_USERNAME:}
+    password: ${SPRING_DATA_REDIS_PASSWORD:}
+  webflux:
+    problemdetails:
+      enabled: true
 
 server:
   port: ${SERVER_PORT:8080}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:8081}
+    address: ${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}
   endpoints:
     web:
       exposure:
         include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,prometheus}
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      app:
+        instance-id: ${APP_INSTANCE_ID:local}
 
+app:
+  instance-id: ${APP_INSTANCE_ID:local}
+  jwt:
+    secret: ${APP_JWT_SECRET:}
+    issuer: ${APP_JWT_ISSUER:fleet-mission-control}
+    ttl: ${APP_JWT_TTL:15m}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    login-rate-limit:
+      max-attempts: ${APP_AUTH_LOGIN_MAX_ATTEMPTS:10}
+      window: ${APP_AUTH_LOGIN_WINDOW:1m}
+  ingestion:
+    queue-capacity: ${APP_INGESTION_QUEUE_CAPACITY:10000}
+    batch-size: ${APP_INGESTION_BATCH_SIZE:500}
+    max-wait: ${APP_INGESTION_MAX_WAIT:100ms}
+  map:
+    tile-zoom: ${APP_MAP_TILE_ZOOM:12}
+    flush-interval: ${APP_MAP_FLUSH_INTERVAL:100ms}
+    auth-timeout: ${APP_MAP_AUTH_TIMEOUT:5s}
+  alerts:
+    battery-threshold: ${APP_ALERT_BATTERY_THRESHOLD:20}
+    offline-after: ${APP_ALERT_OFFLINE_AFTER:2m}

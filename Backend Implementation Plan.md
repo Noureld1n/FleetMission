@@ -92,43 +92,44 @@ util/            tile math and time helpers
 
 ### Work
 
-- [ ] Bind custom settings in typed configuration classes under `app`: instance ID; JWT secret, issuer and TTL; CORS origins; ingestion queue capacity, batch size and maximum wait; map tile zoom, flush interval and auth timeout; alert battery threshold and offline duration.
-- [ ] Configure environment-driven R2DBC runtime credentials (`app_runtime`) and separate Flyway JDBC credentials (`app_owner`).
-- [ ] Configure Redis host/port through `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`.
-- [ ] Configure server port from `SERVER_PORT`, Prometheus/health exposure from `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`, and keep actuator access internal.
-- [ ] Configure dev profile for local Compose, verbose logs and local frontend CORS; prod for strict CORS, minimal logs and internal actuator access.
-- [ ] Expose only health and Prometheus actuator endpoints. Configure probes suitable for Compose health checks.
-- [ ] Add a single global error mapper that returns standard problem-details JSON for validation and domain errors, and consistent 401/403 behavior.
-- [ ] Configure Micrometer/Prometheus base tags including `app.instance-id` so multiple backend instances can be distinguished.
-- [ ] Keep SQL migration execution in Flyway; do not also initialize the schema through `schema.sql`, R2DBC schema scripts, or ORM DDL.
+- [x] Bind custom settings in typed configuration classes under `app`: instance ID; JWT secret, issuer and TTL; CORS origins; ingestion queue capacity, batch size and maximum wait; map tile zoom, flush interval and auth timeout; alert battery threshold and offline duration.
+- [x] Configure environment-driven R2DBC runtime credentials (`app_runtime`) and separate Flyway JDBC credentials (`app_owner`).
+- [x] Configure Redis host/port through `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`.
+- [x] Configure server port from `SERVER_PORT`, Prometheus/health exposure from `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`, and bind actuator to an internal management address/port by default.
+- [x] Configure dev profile for local Compose, verbose logs and local frontend CORS; prod for strict CORS, minimal logs and internal actuator access.
+- [x] Expose only health and Prometheus actuator endpoints by default. Enable liveness/readiness probes and suppress public health details.
+- [x] Add a global problem-details handler for validation and domain errors, including generic 401/403 responses. Phase 3 connects matching handlers to the reactive Spring Security entry point and access-denied handler.
+- [x] Configure Micrometer/Prometheus base tags including `app.instance-id` so multiple backend instances can be distinguished.
+- [x] Keep SQL migration execution in Flyway; do not also initialize the schema through `schema.sql`, R2DBC schema scripts, or ORM DDL.
 
 ### Completion gate
 
-- [ ] Each profile starts with configuration supplied from its environment and no hard-coded secrets.
-- [ ] Health and Prometheus endpoints are available only as intended; domain and validation errors have one response format.
+- [ ] Each profile starts with configuration supplied from its environment and no hard-coded secrets. Startup has not been checked because Maven currently cannot acquire a lock for the Spring Boot parent in the local `.m2` repository.
+- [ ] Health and Prometheus endpoints are available only as intended; domain and validation errors have one response format. The reactive Security handlers are wired, but runtime exposure has not yet been checked.
 
 ## Phase 3: Reactive tenant context, RLS transaction boundary, authentication, and authorization
 
 ### Work
 
-- [ ] Implement user login at `POST /api/auth/login` using the `login_lookup` function, a slow salted password hash, and verification off the event loop on bounded elastic.
-- [ ] Implement self-issued short-lived JWTs with `sub` user UUID, `tenant_id`, `role`, `iat`, `exp`, and configured issuer. Load the signing key only from environment configuration.
-- [ ] Configure reactive Spring Security JWT validation for bearer tokens and role checks.
-- [ ] Implement a separate API-key authentication path for `/ingest/v1/**`: look up by prefix, compare the secret hash, reject unknown/revoked/mismatched keys, then resolve the tenant from the key record.
-- [ ] Keep login and API-key pre-tenant lookup limited to the database functions; do not broaden unauthenticated database access.
-- [ ] Implement security chains/path matchers that distinguish user JWT traffic from machine API-key traffic.
-- [ ] Put tenant ID and role in Reactor Context. Never accept tenant identity from body, path, or query parameters, and never use ThreadLocal.
-- [ ] Add a shared transaction helper used by repositories/services. Inside each tenant-owned transaction, its first SQL statement sets `app.tenant_id` transaction-locally; never set a pooled connection's session-level tenant.
-- [ ] Ensure no other code opens a tenant-owned transaction outside this helper. Ensure pipeline roots without HTTP requests set context from each message before database work.
-- [ ] Apply endpoint access rules: viewers can read; operators inherit viewer access and can write, acknowledge/resolve alerts, trigger scenarios, and edit dashboards according to ownership rules.
-- [ ] Restrict CORS to configured frontend origins. Add login rate limiting. Do not expose management endpoints publicly.
-- [ ] Define a WebSocket authentication timeout and first-message JWT authentication behavior for `/ws/map`.
-- [ ] Ensure all credential and token failures are mapped to uniform 401/403 problem responses without leaking hashes or token details.
+- [x] Implement user login at `POST /api/auth/login` using the `login_lookup` function, BCrypt password hashes, and verification off the event loop on bounded elastic.
+- [x] Implement self-issued short-lived JWTs with `sub` user UUID, `tenant_id`, `role`, `iat`, `exp`, and configured issuer. Load the signing key only from `APP_JWT_SECRET`.
+- [x] Configure reactive Spring Security JWT validation for bearer tokens and role checks.
+- [x] Implement a separate API-key authentication path for `/ingest/v1/**`: look up by prefix, compare a constant-time SHA-256 secret hash, reject unknown/revoked/mismatched keys, then resolve the tenant from the key record.
+- [x] Keep login and API-key pre-tenant lookup limited to the database functions; do not broaden unauthenticated database access.
+- [x] Implement ordered security chains/path matchers that distinguish user JWT traffic from machine API-key traffic.
+- [x] Put tenant ID, subject ID, and role in a typed Reactor Context value. Never accept tenant identity from body, path, or query parameters, and never use ThreadLocal.
+- [x] Add a shared transaction helper used by repositories/services. Inside each tenant-owned transaction, its first SQL statement sets `app.tenant_id` transaction-locally; never set a pooled connection's session-level tenant.
+- [x] Route the currently implemented tenant-owned transaction boundary through the shared helper; no other tenant-owned database code exists yet.
+- [ ] When background pipeline roots are added, set tenant identity from each message before database work.
+- [x] Apply endpoint access rules: viewers can read; operators inherit viewer access and can write. Resource-specific owner rules remain in domain services.
+- [x] Restrict CORS to configured frontend origins. Add Redis-backed login rate limiting. Bind management endpoints to a loopback-only port by default.
+- [x] Define the `/ws/map` auth timeout and a helper that validates the JWT from its first auth frame. The WebSocket handler will enforce frame shape and close behavior in Phase 8.
+- [x] Return uniform RFC problem-details responses for credential, authorization, domain, and validation failures without exposing hashes or token details.
 
 ### Completion gate
 
-- [ ] Login issues and validates the documented claims; disabled users, expired/invalid tokens, wrong roles, unknown/revoked API keys are rejected.
-- [ ] A tenant-owned database operation with no context sees no rows and cannot write; each request/transaction sets context on its own transaction.
+- [ ] Login issues and validates the documented claims; disabled users, expired/invalid tokens, wrong roles, unknown/revoked API keys are rejected. Automated security checks have not been run.
+- [ ] A tenant-owned database operation with no context sees no rows and cannot write; each request/transaction sets context on its own transaction. Runtime database verification has not been run.
 
 ## Phase 4: Core REST domain and dashboard foundation
 
